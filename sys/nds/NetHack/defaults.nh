@@ -1,0 +1,90 @@
+# Sample config file for NDS NetHack
+# A '#' at the beginning of a line means the rest of the line is a comment.
+#
+# Some options MUST be set in this file, other options can be toggled while
+# playing.  For a list of options available see the <opthelp.> file.
+#
+# To change the configuration, comment out the unwanted lines, and
+# uncomment the configuration you want.
+
+# *** OPTIONS ***
+OPTIONS=tile_file:tiles.bmp,tile_width:16,tile_height:16
+OPTIONS=color,ibmgraphics
+OPTIONS=toptenwin
+OPTIONS=autopickup,pickup_types:$
+OPTIONS=noshowexp,lit_corridor
+OPTIONS=menucolors
+
+MENUCOLOR=" blessed "=green
+MENUCOLOR=" holy "=green
+MENUCOLOR=" cursed .* \(being worn\)"=orange&underline
+MENUCOLOR=" cursed "=red
+MENUCOLOR=" unholy "=red
+
+# *** Some NetHackDS Specific options ***
+#
+# You prefer a keyboard for commands?  If you insist...
+# OPTIONS=!cmdwindow
+#
+# Change command window to L/R toggle visibility, rather than require they
+# be held.
+# OPTIONS=holdmode
+#
+# Swaps the R and L buttons.
+# OPTIONS=lefthanded
+#
+# Enable doubletap mode.  Changes menus and windows to require double-taps for
+# selecting items.
+# OPTIONS=doubletap
+#
+# Disable the cursor?  Okay...
+# OPTIONS=!cursor
+#
+# Enable compass mode.  A value of 1 enables relative mode, where taps around
+# the hero are mapped to a compass, and translated to movement keys.  A value
+# of 2 enables absolute mode, where the taps are examined relative to
+# the center of the screen.  See the iRogue website for examples of how this 
+# works.
+# OPTIONS=compassmode:1
+#
+# Enables some additional map colouring for special areas.
+# OPTIONS=mapcolors
+#
+# Defines which keys are chord keys, which can be combined with regular keys for
+# keybinding purposes.  The example below allows one to create a setup identical
+# to triggermode, in that the user may then bind the various directions plus
+# B to the various directions.
+# CHORDKEYS=up,down,left,right,r
+#
+# Defines the key which will be used to pop up the command window.
+# OPTIONS=cmdkey:l
+#
+# Disables key repeating within the game itself (still works in menus, the
+# command window, etc).
+# OPTIONS=!keyrepeat
+#
+# Display the key help lines.
+# OPTIONS=!keyhelp
+#
+# These options define which keys are displayed in the help lines, and in
+# what order they are shown.
+# HELPLINE1=up,down,left,right,r,l
+# HELPLINE2=a,b,x,y,start,select
+
+# *** Personal Preferences ***
+# Some options to set personal preferences.  Uncomment and change these to
+# suit your personal preference.  If several people are to use the same
+# configuration, options like these should not be set.
+#
+#OPTIONS=name:Janet,role:Valkyrie,race:Human,gender:female,align:lawful
+#OPTIONS=dogname:Fido,catname:Morris,fruit:guava
+#OPTIONS=horsename:Silver
+#OPTIONS=autopickup,pickup_types:$"=/!?+
+#OPTIONS=packorder:")[%?+/=!(*0_`
+#OPTIONS=scores:10 top/2 around/own
+#OPTIONS=nolegacy,noverbose
+#OPTIONS=menustyle:traditional
+#OPTIONS=time
+#OPTIONS=number_pad:1
+#OPTIONS=hilite_pet
+#

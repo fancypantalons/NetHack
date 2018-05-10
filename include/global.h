@@ -6,6 +6,7 @@
 #define GLOBAL_H
 
 #include <stdio.h>
+#include <stdint.h>
 
 /* #define BETA */ /* development or beta testing [MRS] */
 
@@ -147,6 +148,10 @@ typedef uchar nhsym;
 #endif
 #endif
 
+#ifdef NDS
+#include "ndsconf.h"
+#endif
+
 /* Displayable name of this port; don't redefine if defined in *conf.h */
 #ifndef PORT_ID
 #ifdef AMIGA
@@ -192,6 +197,9 @@ typedef uchar nhsym;
 #ifdef WIN32
 #define PORT_ID "Windows"
 #endif
+#ifdef NDS
+#define PORT_ID "NDS"
+#endif
 #endif
 
 #if defined(MICRO)
@@ -222,7 +230,7 @@ typedef uchar nhsym;
 #endif
 
 #if defined(X11_GRAPHICS) || defined(QT_GRAPHICS) || defined(GNOME_GRAPHICS) \
-    || defined(WIN32)
+    || defined(WIN32) || defined(NDS_GRAPHICS)
 #ifndef USE_TILES
 #define USE_TILES /* glyph2tile[] will be available */
 #endif

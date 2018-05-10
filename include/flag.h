@@ -324,6 +324,21 @@ struct instance_flags {
        locally so that they can be restored during a hangup save */
     Bitfield(save_uinwater, 1);
     Bitfield(save_uburied, 1);
+#ifdef NDS
+        boolean cmdwindow;
+        boolean doubletap;
+        boolean holdmode;
+        boolean lefthanded;
+        int compassmode;
+        boolean mapcolors;
+        char *chordkeys;
+        char *cmdkey;
+        int cursor;
+        boolean keyrepeat;
+        boolean keyhelp;
+        char *helpline1;
+        char *helpline2;
+#endif
 };
 
 /*

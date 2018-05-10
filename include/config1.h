@@ -210,4 +210,14 @@
  */
 #endif
 
+/*
+ * NDS Autodetection
+ */
+#if defined(NDS) || defined(ARM7) || defined(ARM9)
+# define NDS
+# define NEED_VARARGS
+# define USE_STDARG
+# define NOTTYGRAPHICS
+#endif
+
 #endif /* CONFIG1_H */

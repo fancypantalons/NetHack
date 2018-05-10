@@ -3782,10 +3782,34 @@ int x, y, mod;
             cmd[1] = Cmd.dirchars[dir];
             cmd[2] = '\0';
             if (IS_DOOR(levl[u.ux + x][u.uy + y].typ)) {
+                #ifdef NDS
+
+                static int old_door_x = -1;
+                static int old_door_y = -1;
+                static int old_door_lev = -1;
+
+                /* 
+                 * We're allowed to kick this door if we've previously tried
+                 * to open it normally.
+                 */
+                int can_kick = (old_door_x == (u.ux + x)) &&
+                               (old_door_y == (u.uy + y)) &&
+                               (old_door_lev == u.uz.dnum);
+
+                old_door_x = u.ux + x;
+                old_door_y = u.uy + y;
+                old_door_lev = u.uz.dnum;
+
+                #endif
+
                 /* slight assistance to the player: choose kick/open for them
                  */
                 if (levl[u.ux + x][u.uy + y].doormask & D_LOCKED) {
+                    #ifdef NDS
+                    cmd[0] = can_kick ? C('d') : 'o';
+                    #else
                     cmd[0] = C('d');
+                    #endif
                     return cmd;
                 }
                 if (levl[u.ux + x][u.uy + y].doormask & D_CLOSED) {

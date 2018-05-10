@@ -52,8 +52,16 @@
  * Define the default window system.  This should be one that is compiled
  * into your system (see defines above).  Known window systems are:
  *
- *      tty, X11, mac, amii, BeOS, Qt, Gem, Gnome
+ *      tty, X11, mac, amii, BeOS, Qt, Gem, Gnome, nds
  */
+
+#ifdef NDS
+# define NDS_GRAPHICS
+# define DEFAULT_WINDOW_SYS "nds"
+# define HACKDIR	"/NetHack"
+# undef UNIX	/* no fork() or exec() */
+#else
+#endif
 
 /* MAC also means MAC windows */
 #ifdef MAC
@@ -188,8 +196,8 @@
 #endif
 
 #ifndef SYSCF
-#define SYSCF                /* use a global configuration */
-#define SYSCF_FILE "sysconf" /* global configuration is in a file */
+/* #define SYSCF                */ /* use a global configuration */
+/* #define SYSCF_FILE "sysconf" */ /* global configuration is in a file */
 #endif
 
 #ifndef GDBPATH
@@ -250,11 +258,11 @@
 
 #if defined(UNIX) && !defined(ZLIB_COMP) && !defined(COMPRESS)
 /* path and file name extension for compression program */
-#define COMPRESS "/usr/bin/compress" /* Lempel-Ziv compression */
-#define COMPRESS_EXTENSION ".Z"      /* compress's extension */
+// #define COMPRESS "/usr/bin/compress" /* Lempel-Ziv compression */
+// #define COMPRESS_EXTENSION ".Z"      /* compress's extension */
 /* An example of one alternative you might want to use: */
-/* #define COMPRESS "/usr/local/bin/gzip" */ /* FSF gzip compression */
-/* #define COMPRESS_EXTENSION ".gz" */       /* normal gzip extension */
+#define COMPRESS "/usr/local/bin/gzip"  /* FSF gzip compression */
+#define COMPRESS_EXTENSION ".gz"        /* normal gzip extension */
 #endif
 
 #ifndef COMPRESS
@@ -289,7 +297,7 @@
  *      files at the cost of additional code and time.
  */
 
-/* # define INTERNAL_COMP */ /* defines both ZEROCOMP and RLECOMP */
+# define INTERNAL_COMP /* defines both ZEROCOMP and RLECOMP */
 /* # define ZEROCOMP      */ /* Support ZEROCOMP compression */
 /* # define RLECOMP       */ /* Support RLECOMP compression  */
 
@@ -298,7 +306,7 @@
  *      a tar-like file, thus making a neater installation.  See *conf.h
  *      for detailed configuration.
  */
-/* #define DLB */ /* not supported on all platforms */
+#define DLB /* not supported on all platforms */
 
 /*
  *      Defining INSURANCE slows down level changes, but allows games that
@@ -306,6 +314,8 @@
  *      of the last level change, after running a utility program.
  */
 #define INSURANCE /* allow crashed game recovery */
+#define BACKUP_SAVES /* back up game saves when we delete on restore         */
+                     /* enables save scumming but less hateful on game crash */
 
 #ifndef MAC
 #define CHDIR /* delete if no chdir() available */

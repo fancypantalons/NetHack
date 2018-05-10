@@ -458,10 +458,17 @@ int lev;
 {
     char *tf;
 
+#ifndef NDS
     tf = rindex(file, '.');
     if (!tf)
         tf = eos(file);
     Sprintf(tf, ".%d", lev);
+#else
+    tf = rindex(file, '-');
+    if (!tf)
+        tf = eos(file);
+    Sprintf(tf, "-%d", lev);
+#endif
 #ifdef VMS
     Strcat(tf, ";1");
 #endif
@@ -737,6 +744,10 @@ char errbuf[];
 {
     const char *file;
     int fd;
+#ifdef NDS
+        FILE *src;
+        FILE *dest;
+#endif
 
     if (errbuf)
         *errbuf = '\0';
@@ -744,6 +755,34 @@ char errbuf[];
     file = set_bonestemp_name();
     file = fqname(file, BONESPREFIX, 0);
 
+#ifdef NDS
+      src = fopen(file, "r");
+
+      if (src != NULL) {
+        dest = fopen(file, "w");
+
+        if (dest == NULL) {
+          fclose(src);
+          fd = -1;
+        } else {
+          unsigned char buf[512];
+          int count;
+
+          while ((count = fread(buf, 1, sizeof(buf), src)) > 0) {
+            fwrite(buf, 1, count, dest);
+          }
+
+          if (count < 0) {
+            fd = count;
+          } else {
+            fclose(dest);
+            fd = unlink(file);
+          }
+        }
+      } else {
+        fd = -1;
+      }
+#else
 #if defined(MICRO) || defined(WIN32)
     /* Use O_TRUNC to force the file to be shortened if it already
      * exists and is currently longer.
@@ -754,6 +793,7 @@ char errbuf[];
     fd = maccreat(file, BONE_TYPE);
 #else
     fd = creat(file, FCMASK);
+#endif
 #endif
 #endif
     if (fd < 0 && errbuf) /* failure explanation */
@@ -991,7 +1031,41 @@ open_savefile()
 int
 delete_savefile()
 {
+    #ifdef BACKUP_SAVES
+
+    const char *name = fqname(SAVEF, SAVEPREFIX, 0);
+    char backup_name[BUFSZ + 2];
+    int save_fd, backup_fd;
+
+    sprintf(backup_name, "%s.bak", name);
+
+    (void) unlink(backup_name);
+
+    save_fd = open_savefile();
+
+#if defined(MICRO) || defined(WIN32)
+    backup_fd = open(backup_name, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
+#else
+# ifdef MAC
+    backup_fd = maccreat(backup_name, BONE_TYPE);
+# else
+    backup_fd = creat(backup_name, FCMASK);
+# endif
+#endif
+
+    copy_bytes(save_fd, backup_fd);
+
+    close(save_fd);
+    close(backup_fd);
+
+    (void) unlink(name);
+
+    #else
+
     (void) unlink(fqname(SAVEF, SAVEPREFIX, 0));
+
+    #endif
+
     return 0; /* for restore_saved_game() (ex-xxxmain.c) test */
 }
 
@@ -1828,7 +1902,7 @@ const char *configfile =
 #if defined(MAC) || defined(__BEOS__)
     "NetHack Defaults";
 #else
-#if defined(MSDOS) || defined(WIN32)
+#if defined(MSDOS) || defined(WIN32) || defined(NDS)
     "defaults.nh";
 #else
     "NetHack.cnf";
@@ -1907,7 +1981,8 @@ int src;
         }
     }
 
-#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32)
+#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32) \
+	|| defined(NDS)
     if ((fp = fopenp(fqname(configfile, CONFIGPREFIX, 0), "r")) != (FILE *) 0)
         return fp;
     if ((fp = fopenp(configfile, "r")) != (FILE *) 0)
@@ -2370,6 +2445,14 @@ int src;
                           "BOULDER");
     } else if (match_varname(buf, "MENUCOLOR", 9)) {
         (void) add_menu_coloring(bufp);
+#ifdef NDS
+    } else if (match_varname(buf, "CHORDKEYS", 9)) {
+        iflags.chordkeys = strdup(bufp);
+    } else if (match_varname(buf, "HELPLINE1", 9)) {
+        iflags.helpline1 = strdup(bufp);
+    } else if (match_varname(buf, "HELPLINE2", 9)) {
+        iflags.helpline2 = strdup(bufp);
+#endif
     } else if (match_varname(buf, "WARNINGS", 5)) {
         (void) get_uchars(fp, buf, bufp, translate, FALSE, WARNCOUNT,
                           "WARNINGS");
@@ -2641,7 +2724,8 @@ fopen_wizkit_file()
 #endif
     }
 
-#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32)
+#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32) \
+	|| defined(NDS)
     if ((fp = fopenp(fqname(wizkit, CONFIGPREFIX, 0), "r")) != (FILE *) 0)
         return fp;
 #else
