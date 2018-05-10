@@ -348,6 +348,7 @@ void start_game()
     (void) pickup(1);
   }
 
+
   moveloop(resuming);
 }
 
@@ -364,6 +365,10 @@ int main()
 
   init_screen();
   check_debug();
+
+  if (debug_mode) {
+    nds_show_console();
+  }
 
   if (! fatInitDefault())
   {
