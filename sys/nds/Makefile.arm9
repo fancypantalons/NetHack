@@ -19,7 +19,7 @@ include $(DEVKITARM)/ds_rules
 BUILD		:=	build
 SOURCES		:=	sys/nds/arm9/src
 OTHERSRC	:=	src
-SYSSRC		:=	posixregex.c
+SYSSRC		:=	
 INCLUDES	:=	sys/nds/include sys/nds/arm9/include include
 DATA		:=
 
@@ -68,7 +68,7 @@ endif
 #---------------------------------------------------------------------------------
 
 OFILES	:=	$(addsuffix .o,$(BINFILES)) \
-					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SYSSRC:.c=.o) $(SFILES:.s=.o)
 					
 OTHEROBJ	:=	$(OTHERC:.c=.o)
  
@@ -123,7 +123,6 @@ $(ARM9ELF)	:	$(foreach ofile,$(OFILES),$(BUILD)/$(ofile)) $(foreach ofile,$(OTHE
 	@echo linking $(notdir $@)
 	$(LD)  $(LDFLAGS) $(foreach ofile,$(OFILES),$(BUILD)/$(ofile)) \
 		$(foreach ofile,$(OTHEROBJ),$(BUILD)/$(ofile)) \
-		$(foreach ofile,$(SYSSRC:.c=.o),$(BUILD)/$(ofile)) \
 		$(LIBPATHS) $(LIBS) -o $@
 	
 $(BUILD)/%.o	:	$(SOURCES)/%.c
