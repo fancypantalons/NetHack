@@ -666,7 +666,7 @@ void nds_putstr(winid win, int attr, const char *str)
     *c = '\0';
 
     if (win == WIN_STATUS) {
-      nds_update_status((char *)str);
+      nds_status_putstr((char *)str);
     } else if (win == WIN_MESSAGE) {
       _nds_win_append_text(window, attr | ATR_NOREFLOW, str);
     } else {
@@ -681,7 +681,7 @@ void nds_putstr(winid win, int attr, const char *str)
 
   if (*str || ! newline) {
     if (win == WIN_STATUS) {
-      nds_update_status((char *)str);
+      nds_status_putstr((char *)str);
     } else if (win == WIN_MESSAGE) {
       _nds_win_append_text(window, attr | ATR_NOREFLOW, str);
     } else {
@@ -1274,11 +1274,11 @@ void nds_add_menu(winid win, int glyph, const ANY_P *id,
   strcpy(title_tmp, str);
 
   if (iflags.use_menu_color) {
-    get_menu_coloring(title_tmp, &mccolor,&mcattr);
+    get_menu_coloring(title_tmp, &mccolor, &mcattr);
   }
 
   memset(items[idx].title, 0, sizeof(items[idx].title));
-                                          
+
   do {
     char buffer[BUFSZ];
     char *dest = items[idx].title[title_cnt++];
@@ -1290,9 +1290,9 @@ void nds_add_menu(winid win, int glyph, const ANY_P *id,
 
     if (title_len > 0) {
       if (mccolor > CLR_GRAY) {
-        sprintf(dest, "\e[1m\e[3%dm", mccolor - BRIGHT);
+        sprintf(dest, "\e[1;3%dm", mccolor - BRIGHT);
       } else {
-        sprintf(dest, "\e[2m\e[3%dm", mccolor);
+        sprintf(dest, "\e[2;3%dm", mccolor);
       }
 
       if (mcattr) {
@@ -2047,8 +2047,12 @@ struct window_procs nds_procs = {
       WC_FONTSIZ_MESSAGE|WC_FONTSIZ_STATUS|WC_FONTSIZ_MENU|WC_FONTSIZ_TEXT|
       WC_TILE_WIDTH|WC_TILE_HEIGHT|WC_TILE_FILE|WC_VARY_MSGCOUNT|
       WC_WINDOWCOLORS|WC_PLAYER_SELECTION|WC_SPLASH_SCREEN|WC_POPUP_DIALOG,*/
-    0L,
-    0L,
+    (WC_COLOR | WC_HILITE_PET | WC_INVERSE | WC_EIGHT_BIT_IN),
+    (0
+#if defined(STATUS_HILITES)
+     | WC2_HILITE_STATUS | WC2_FLUSH_STATUS /* | WC2_HITPOINTBAR */
+#endif
+     | WC2_DARKGRAY),
     nds_init_nhwindows,
     nds_player_selection,
     nds_askname,
@@ -2102,10 +2106,10 @@ struct window_procs nds_procs = {
     nds_preference_update,
     genl_getmsghistory,
     genl_putmsghistory,
-    genl_status_init,
+    nds_status_init,
     genl_status_finish,
     genl_status_enablefield,
-    genl_status_update,
+    nds_status_update,
     genl_can_suspend_no
 };
 

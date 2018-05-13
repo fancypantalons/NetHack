@@ -21,6 +21,22 @@ MENUCOLOR=" cursed .* \(being worn\)"=orange&underline
 MENUCOLOR=" cursed "=red
 MENUCOLOR=" unholy "=red
 
+OPTION=statushilites:3
+OPTION=hilite_status:gold/up/yellow/down/brown
+OPTION=hilite_status:characteristics/up/green/down/red
+OPTION=hilite_status:hitpoints/100%/gray&normal
+OPTION=hilite_status:hitpoints/<100%/green&normal
+OPTION=hilite_status:hitpoints/<66%/yellow&normal
+OPTION=hilite_status:hitpoints/<50%/orange&normal
+OPTION=hilite_status:hitpoints/<33%/red&bold
+OPTION=hilite_status:hitpoints/<15%/red&inverse
+OPTION=hilite_status:condition/major/orange&inverse
+OPTION=hilite_status:condition/major/orange&inverse
+OPTION=hilite_status:condition/lev+fly/red&inverse
+OPTION=hilite_status:hunger/2/yellow/normal
+OPTION=hilite_status:hunger/3/orange/normal
+OPTION=hilite_status:hunger/>4/red/normal
+
 # *** Some NetHackDS Specific options ***
 #
 # You prefer a keyboard for commands?  If you insist...

@@ -456,7 +456,7 @@ draw_string (struct font *font, char *string,
   int attr = 0;
 
   ansi_state state = STATE_SEARCHING;
-  int code_params[2];
+  int code_params[8];
   int param_count = 0;
   char *start_ptr;
 
@@ -547,7 +547,6 @@ draw_string (struct font *font, char *string,
               }
 
               switch (*string) {
-                /* Select Graphic Rendition */
                 case 'm':
                   state = STATE_SEARCHING;
 
@@ -559,29 +558,39 @@ draw_string (struct font *font, char *string,
                     fg = CLR_GRAY;
                     bg = CLR_BLACK;
                     attr = 0;
-                  } else if (code_params[0] == 1) {
-                    attr |= TEXT_ATTR_BOLD;
-                  } else if (code_params[0] == 2) {
-                    attr &= ~TEXT_ATTR_BOLD;
-                  } else if (code_params[0] == 4) {
-                    attr |= TEXT_ATTR_ULINE;
-                  } else if (code_params[0] == 7) {
-                    attr |= TEXT_ATTR_INVERSE;
-                  } else if (code_params[0] == 24) {
-                    attr &= ~TEXT_ATTR_ULINE;
-                  } else if (code_params[0] == 27) {
-                    attr &= ~TEXT_ATTR_INVERSE;
-                  } else if ((code_params[0] >= 30) && (code_params[0] <= 39)) {
-                    int c = code_params[0] - 30;
+                  } else {
+                    int i;
 
-                    if (c == '9') {
-                      fg = CLR_GRAY;
-                      attr |= TEXT_ATTR_BOLD;
-                    } else {
-                      fg = c;
+                    for (i = 0; i < param_count; i++) {
+                      if (code_params[i] == 1) {
+                        attr |= TEXT_ATTR_BOLD;
+                      } else if (code_params[i] == 2) {
+                        attr &= ~TEXT_ATTR_BOLD;
+                      } else if (code_params[i] == 4) {
+                        attr |= TEXT_ATTR_ULINE;
+                      } else if (code_params[i] == 7) {
+                        attr |= TEXT_ATTR_INVERSE;
+                      } else if (code_params[i] == 24) {
+                        attr &= ~TEXT_ATTR_ULINE;
+                      } else if (code_params[i] == 27) {
+                        attr &= ~TEXT_ATTR_INVERSE;
+                      } else if (code_params[i] == 39) {
+                        fg = CLR_GRAY;
+                      } else if (code_params[i] == 49) {
+                        bg = CLR_BLACK;
+                      } else if ((code_params[i] >= 30) && (code_params[i] <= 39)) {
+                        int c = code_params[i] - 30;
+
+                        if (c == '9') {
+                          fg = CLR_GRAY;
+                          attr |= TEXT_ATTR_BOLD;
+                        } else {
+                          fg = c;
+                        }
+                      } else if ((code_params[i] >= 40) && (code_params[i] <= 49)) {
+                        bg = code_params[i] - 40;
+                      }
                     }
-                  } else if ((code_params[0] >= 40) && (code_params[0] <= 49)) {
-                    bg = code_params[0] - 40;
                   }
 
                   break;
