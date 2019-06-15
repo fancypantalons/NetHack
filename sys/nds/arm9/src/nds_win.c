@@ -219,7 +219,7 @@ give_up:
       if (flags.initrole < 0) {
         DEBUG_PRINT("Incompatible role!");
 
-        flags.initrole = randrole();
+        flags.initrole = randrole(FALSE);
       }
     } else {
       /* Prompt for a role */
@@ -263,7 +263,7 @@ give_up:
                             flags.initalign, PICK_RANDOM)+1;
 
       if (any.a_int == 0)	/* must be non-zero */
-        any.a_int = randrole()+1;
+        any.a_int = randrole(FALSE) + 1;
 
       add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
                "Random", MENU_UNSELECTED);

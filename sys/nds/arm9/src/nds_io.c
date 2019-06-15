@@ -59,3 +59,20 @@ char *get_username(int *lan_username_size)
   if (lan_username_size) *lan_username_size = strlen(username_buffer);
   return username_buffer;
 }
+
+unsigned long
+sys_random_seed()
+{
+    unsigned long seed = 0L;
+    unsigned long pid = (unsigned long) getpid();
+
+    seed = (unsigned long) getnow();
+
+    if (pid) {
+        if (!(pid & 3L))
+            pid -= 1L;
+        seed *= pid;
+    }
+
+    return seed;
+}
