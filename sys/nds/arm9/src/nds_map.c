@@ -99,7 +99,7 @@ int nds_find_cache_slot(coord_t coords)
   unsigned int special;
   int tile = glyph2tile[glyph];
 
-  mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y);
+  mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y, 0);
 
   for (i = 0; i < map->num_cache_entries; i++) {
     if ((map->tile_cache[i].glyph == glyph) && (map->tile_cache[i].colour == colour) && 
@@ -151,7 +151,7 @@ int nds_allocate_cache_slot(coord_t coords)
     cache_slot = oldest;
   }
 
-  mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y);
+  mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y, 0);
 
   map->tile_cache[cache_slot].glyph = glyph;
   map->tile_cache[cache_slot].colour = colour;
@@ -248,7 +248,7 @@ void nds_load_text_tile(int tile_idx, coord_t coords)
 
   /* Alright, now convert the glyph to a character */
 
-  mapglyph(glyph, &ch, &color, &special, coords.x, coords.y);
+  mapglyph(glyph, &ch, &color, &special, coords.x, coords.y, 0);
 
   /* Mmm... hacky... */
 
@@ -389,7 +389,7 @@ void nds_draw_tile(coord_t coords)
     int ch, color;
     unsigned int special;
 
-    mapglyph(glyph, &ch, &color, &special, coords.x, coords.y);
+    mapglyph(glyph, &ch, &color, &special, coords.x, coords.y, 0);
 
     /*
     if (special & MG_PET) {

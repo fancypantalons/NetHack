@@ -2053,6 +2053,7 @@ struct window_procs nds_procs = {
      | WC2_HILITE_STATUS | WC2_FLUSH_STATUS /* | WC2_HITPOINTBAR */
 #endif
      | WC2_DARKGRAY),
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     nds_init_nhwindows,
     nds_player_selection,
     nds_askname,
