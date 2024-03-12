@@ -63,6 +63,22 @@ make -f sys/nds/Makefile
 
 The game and data files are then available in the `binary` directory.
 
+## Running via Desmume
+
+[Desmume](https://desmume.org/) is able to run homebrew like NetHackDS with the right setup and flags.
+
+First, you must manually apply a DLDI patch for the ROM.  The [R4DS](https://www.chishm.com/DLDI/downloads/r4tf_v2.dldi) DLDI patch is tested and known to work with Desmume.
+
+Once patched, you can run the game after a build as follows (assuming a fairly recent version of Desmume):
+
+```sh
+desmume-cli --slot1 R4 --slot1-fat-dir binary/ binary/NetHackDS.nds
+```
+
+Keep in mind, at least in my limited testing, it doesn't appear Desmume
+supports writing back to the supplied directory, so saving and bonesfile
+dropping will not work.
+
 [^1]:
     For version 3.6.6 and earlier, only the '/NetHack' folder is supported.
     
