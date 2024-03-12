@@ -4,6 +4,8 @@
 
 #include "nds_debug.h"
 
+int debug_mode = 0;
+
 void nds_debug_print(char *file, int line, char *fmt, ...)
 {
   char buffer[1024];
@@ -11,7 +13,12 @@ void nds_debug_print(char *file, int line, char *fmt, ...)
 
   va_start(ap, fmt);
 
-  sprintf(buffer, "%s:%d - %s", file, line, fmt);
+  if (debug_mode) {
+    sprintf(buffer, "%s:%d - %s", file, line, fmt);
+  } else {
+    sprintf(buffer, "%s", fmt);
+  }
+
   viprintf(buffer, ap);
 
   va_end(ap);

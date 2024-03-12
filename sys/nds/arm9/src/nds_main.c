@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <netinet/in.h>
+#include <date.h>
 
 #include "ndsx_ledblink.h"
 
@@ -33,7 +34,6 @@ const unsigned char *_pcre_default_tables;
 
 int console_enabled = 0;
 int was_console_layer_visible = 0;
-int debug_mode = 0;
 int lid_closed = 0;
 int power_state = 0;
 int wifi_connected = 0;
@@ -116,8 +116,10 @@ int nds_power_state()
   return power_state;
 }
 
-void nds_error()
+void nds_error(char *err)
 {
+  DEBUG_PRINT(err);
+
   have_error = 1;
 }
 
@@ -357,6 +359,62 @@ boolean authorize_wizard_mode()
   return TRUE;
 }
 
+int try_nethack_dir(char *prefix, char *version)
+{
+  char root[BUFSZ];
+
+  if (prefix != NULL) {
+    sprintf(root, "%s/", prefix);
+  } else {
+    root[0] = '\0';
+  }
+
+  strcat(root, "NetHack");
+
+  if (version != NULL) {
+    strcat(root, "-");
+    strcat(root, version);
+  }
+
+  DEBUG_PRINT("Trying /%s\n", root);
+
+  if (chdir(root) == 0) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int switch_to_data_dir()
+{
+  DIR *tmp = opendir("/");
+  char root[BUFSZ];
+
+  if (! tmp) {
+    return 0;
+  } else {
+    closedir(tmp);
+  }
+
+  if (try_nethack_dir("data", VERSION_STRING)) {
+    return 1;
+  }
+
+  if (try_nethack_dir(NULL, VERSION_STRING)) {
+    return 1;
+  }
+
+  if (try_nethack_dir("data", NULL)) {
+    return 1;
+  }
+
+  if (try_nethack_dir(NULL, NULL)) {
+    return 1;
+  }
+
+  return 0;
+}
+
 int main()
 {
   srand(time(NULL));
@@ -370,26 +428,13 @@ int main()
     nds_show_console();
   }
 
-  if (! fatInitDefault())
-  {
-    DEBUG_PRINT("Unable to initialize FAT driver!\n");
-    nds_show_console();
-
-    return 0;
+  if (! fatInitDefault()) {
+    nds_error("Unable to init FAT driver.\n");
+    nds_error("Has a suitable DLDI patch been\napplied for the flash card?\n\n");
+  } else if (! switch_to_data_dir()) {
+    nds_error("Unable to open data directory.\n");
+    nds_error("Was the NetHack folder copied\nto the flash card?\n\n");
   }
-
-  DIR *tmp = opendir("/");
-  struct dirent *ent;
-
-  if (! tmp)
-  {
-    DEBUG_PRINT("Unable to open root directory!\n");
-    nds_show_console();
-
-    return 0;
-  }
-
-  chdir("/NetHack");
 
   /* Initialize some nethack constants */
 
@@ -424,7 +469,9 @@ int main()
   if (have_error) {
     nds_show_console();
 
-    return 255;
+    // I used to return here but Desmume doesn't always update the screen
+    // nicely so we just infinitely loop instead.
+    while(1);
   }
 
   /* Get PCRE set up. */

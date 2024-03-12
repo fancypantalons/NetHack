@@ -3,6 +3,8 @@
 
 #define DEBUG_PRINT(fmt, ...) nds_debug_print(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
+extern int debug_mode;
+
 void nds_debug_print(char *file, int line, char *fmt, ...);
 
 #endif

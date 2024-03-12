@@ -36,9 +36,11 @@ u8 process_special_keystrokes = 1;
 void kbd_init() {
   u16 palette[4];
 
-  nds_load_file("/NetHack/kbd.bin", (void *)BG_TILE_RAM(0));
-  nds_load_file("/NetHack/kbd.map", (void *)BG_MAP_RAM(4));
-  nds_load_palette("/NetHack/kbd.pal", palette);
+  // Here we rely on the fact that, during the early initialization phase, the
+  // current working directory has been set to the NetHack data directory.
+  nds_load_file("kbd.bin", (void *)BG_TILE_RAM(0));
+  nds_load_file("kbd.map", (void *)BG_MAP_RAM(4));
+  nds_load_palette("kbd.pal", palette);
 
   BG_PALETTE[0] = RGB15(0, 0, 0);   /* Regular background */
   BG_PALETTE[16] = RGB15(0, 0, 0);

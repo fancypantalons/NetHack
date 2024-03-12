@@ -116,13 +116,13 @@ void nds_init_nhwindows(int *argc, char **argv)
   system_font = read_bdf("font.bdf");
 
   if (system_font == NULL) {
-    DEBUG_PRINT("Error loading font!\n");
+    nds_error("Error loading font!\n");
 
     return;
   }
 
   if (nds_init_map()) {
-    DEBUG_PRINT("Error loading tiles!\n");
+    nds_error("Error loading tiles!\n");
 
     return;
   }
