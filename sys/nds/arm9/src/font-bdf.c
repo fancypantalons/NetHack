@@ -159,7 +159,7 @@ read_bdf (const char *file)
           int w;
           if (2 != sscanf (buf+7, "%d %d %c", &w, &dummyn, &dummy))
             goto FAIL;
-          if (current_char != -1)
+          if ((current_char >= 0) && (current_char <= 255))
             font->chars[current_char].width = w;
         }
       else if (!strncmp (buf, "BBX ", 4))
@@ -181,7 +181,7 @@ read_bdf (const char *file)
             font->height = h;
           }
 
-          if (current_char != -1)
+          if ((current_char >= 0) && (current_char <= 255))
             {
               font->chars[current_char].lbearing = x;
               font->chars[current_char].descent = y;
@@ -206,16 +206,8 @@ read_bdf (const char *file)
         {
           int y, yoff;
 
-          if (font->chars[current_char].width == 0)
-            {
-              DEBUG_PRINT ("%s: %d: zero-width char ('%c') with bits?\n",
-                       file, line, current_char);
-              return NULL;
-            }
-
           yoff = ((overall_bitmap_height - current_char_height) +
-                  + (overall_bitmap_descent - current_char_descent));
-
+                  (overall_bitmap_descent - current_char_descent));
 
           if (yoff < 0 ||
               yoff + current_char_height - 1 >= overall_bitmap_height)
@@ -258,7 +250,8 @@ read_bdf (const char *file)
                           }
                     }
                 }
-                line++;
+
+              line++;
             }
         }
       else if (!strncmp (buf, "FONT ", 5) ||
@@ -296,13 +289,25 @@ read_bdf (const char *file)
                !strncmp (buf, "CHARS ", 5) ||
                !strncmp (buf, "SWIDTH ", 7) ||
                !strncmp (buf, "DWIDTH ", 7) ||
+               !strncmp (buf, "SWIDTH1 ", 8) ||
+               !strncmp (buf, "DWIDTH1 ", 8) ||
                !strncmp (buf, "RESOLUTION ", 11) ||
                !strncmp (buf, "UNDERLINE_POSITION ", 19) ||
                !strncmp (buf, "UNDERLINE_THICKNESS ", 20) ||
                !strncmp (buf, "_XMBDFED_INFO ", 14) ||
                !strncmp (buf, "WEIGHT ", 7) ||
                !strncmp (buf, "QUAD_WIDTH ", 11) ||
-               !strncmp (buf, "ENDFONT", 7))
+               !strncmp (buf, "ENDFONT", 7) ||
+               !strncmp (buf, "METRICSSET ", 11) ||
+               !strncmp (buf, "VVECTOR ", 8) ||
+               !strncmp (buf, "GDOS ", 5) ||
+               !strncmp (buf, "RAW_ASCENT ", 11) ||
+               !strncmp (buf, "RAW_DESCENT ", 12) ||
+               !strncmp (buf, "NORM_SPACE ", 11) ||
+               !strncmp (buf, "FIGURE_WIDTH ", 13) ||
+               !strncmp (buf, "AVG_LOWERCASE_WIDTH ", 20) ||
+               !strncmp (buf, "AVG_UPPERCASE_WIDTH ", 20) ||
+               !strncmp (buf, "FONT_VERSION ", 13))
         {
           /* ignore */
         }
@@ -323,6 +328,9 @@ read_bdf (const char *file)
 
   if (!font->name)
     font->name = strdup ("<unknown>");
+
+  if (font->ascent == 0)
+    font->ascent = font->height;
 
   if (!stdin_p)
     fclose (in);
@@ -420,8 +428,6 @@ draw_char (struct font *font, const unsigned char c,
   if (from)
     {
       x += font->chars[(int) c].lbearing;
-      y -= from->height + font->chars[(int) c].descent;
-      y += font->ascent;
 
       paste_ppm (into, x, y,
                  from, 0, 0, from->width, from->height,
@@ -478,9 +484,6 @@ draw_string (struct font *font, char *string,
  LINE:
   x = ox;
   w = 0;
-
-  /* back up over the lbearing of the first character on the line */
-  x -= 2 * font->chars[(int) *string].lbearing;
 
   while (*string)
     {
