@@ -12,42 +12,13 @@
 #include "nds_kbd.h"
 #include "nds_config.h"
 #include "nds_cmd.h"
+#include "nds_input.h"
+#include "nds_debug.h"
 
 #define M(c) (0x80 | (c))
 #define C(c) (0x1f & (c))
 
 #define COLOFFS  2
-
-#define CLICK_2_FRAMES 30
-
-/*
- * Missing commands:
- *
- * conduct
- * ride
- * extended commands
- */
-
-typedef struct {
-  int pressed;
-  int released;
-  int held;
-  int touching;
-  int tapped;
-
-  int press_and_hold;
-  int dragging;
-  int drag_started;
-  int drag_stopped;
-
-  coord_t touch_coords;
-  coord_t tap_coords;
-
-  coord_t initial_touch_coords;
-  coord_t drag_distance;
-
-  int held_frames;
-} nds_input_state_t;
 
 nds_cmd_t cmdlist[] = {
 	{M('a'), "Adjust"},
@@ -179,16 +150,16 @@ char direction_keys[NUMDIRS];
 
 /* We use this array for indexing into the key config list */
 
-u16 helpline1[13];
-u16 helpline2[13];
+int helpline1[13];
+int helpline2[13];
 
 nds_cmd_t nds_cmd_loop(nds_cmdloop_op_type_t optype);
 nds_cmd_t nds_kbd_cmd_loop();
 int nds_load_key_config();
 void nds_render_cmd_pages();
-u16 nds_key_string_to_mask();
-u16 *nds_parse_key_string(char *keystr);
-void nds_add_keymap_entry(u16 key, char command[INPUT_BUFFER_SIZE]);
+int nds_key_string_to_mask();
+int *nds_parse_key_string(char *keystr);
+void nds_add_keymap_entry(int key, char command[INPUT_BUFFER_SIZE]);
 
 int nds_init_cmd()
 {
@@ -304,6 +275,15 @@ char *nds_get_direction_keys()
   return direction_keys;
 }
 
+char *nds_get_direction_key_string(int dir)
+{
+  static char *tmp = " ";
+
+  tmp[0] = direction_keys[dir];
+
+  return tmp;
+}
+
 nds_cmd_t *nds_get_cmdlist()
 {
   return cmdlist;
@@ -393,7 +373,7 @@ int nds_handle_click(coord_t coords, int *x, int *y, int *mod)
 
 struct ppm *help_img = NULL;
 
-void nds_render_key_help_string(u16 keys)
+void nds_render_key_help_string(int keys)
 {
   u16 *vram = (u16 *)BG_BMP_RAM_SUB(4);
 
@@ -410,95 +390,6 @@ void nds_render_key_help_string(u16 keys)
               help_img, 0, system_font->height, -1, -1);
 
   draw_ppm(help_img, vram, 4, 192 - system_font->height * 2, 256);
-}
-
-coord_t _to_map_coords(coord_t coords)
-{
-  coord_t res = { 
-    .x = coords.x / nds_map_tile_width(), 
-    .y = coords.y / nds_map_tile_height()
-  };
-
-  return res;
-}
-
-nds_input_state_t _nds_get_input_state(nds_input_state_t prev_state)
-{
-  nds_input_state_t state = prev_state;
-
-  scanKeys();
-  scan_touch_screen();
-
-  /*
-   * First, we'll process the touchscreen tap/drag events.
-   */
-  state.held = nds_keysHeld();
-
-  if (state.held & KEY_TOUCH) {
-    state.touch_coords = _to_map_coords(get_touch_coords());
-    state.touching = 1;
-  } else {
-    state.touching = 0;
-  }
-
-  if (state.touching && ! prev_state.touching) {
-    state.initial_touch_coords = state.touch_coords;
-  }
-
-  /*
-   * Alright, knowing the previous touch state and the current one, now
-   * check for dragging.
-   */
-  if (prev_state.touching && state.touching && 
-      ! COORDS_ARE_EQUAL(prev_state.initial_touch_coords, state.touch_coords)) {
-
-    state.drag_distance = coord_subtract(prev_state.initial_touch_coords, state.touch_coords);
-
-    if (! state.dragging) {
-      state.dragging = 1;
-      state.drag_started = 1;
-    } else {
-      state.drag_started = 0;
-    }
-  } else if (state.dragging) {
-    state.dragging = 0;
-    state.drag_stopped = 1;
-  } else if (state.drag_stopped) {
-    state.drag_stopped = 0;
-  }
-
-  /*
-   * Now, check for key pressed events...
-   */
-  if (iflags.keyrepeat) {
-    state.pressed = nds_keysDownRepeat();
-  } else {
-    state.pressed = nds_keysDown();
-  }
-
-  state.released = nds_keysUp();
-
-  /*
-   * Tap events...
-   */
-  state.tapped = get_tap_coords(&(state.tap_coords)) && ! state.dragging && ! state.drag_stopped;
-  state.tap_coords = _to_map_coords(state.tap_coords);
-
-  /*
-   * And press-and-hold...
-   */
-  if (state.touching && ! state.dragging) {
-    state.held_frames = prev_state.held_frames + 1;
-
-    if (state.held_frames > CLICK_2_FRAMES) {
-      state.press_and_hold = 1;
-    }
-  } else {
-    state.press_and_hold = 0;
-    state.held_frames = 0;
-  }
-
-  return state;
 }
 
 int nds_get_input(int *x, int *y, int *mod)
@@ -530,14 +421,10 @@ int nds_get_input(int *x, int *y, int *mod)
     int key = 0;
 
     prev_state = state;
-    state = _nds_get_input_state(prev_state);
+    state = nds_poll_input(prev_state);
 
     if (nds_command_key_pressed(state.pressed)) {
       nds_cmd_t cmd;
-
-      if (! iflags.holdmode) {
-        nds_flush(0);
-      }
       
       if (iflags.cmdwindow) {
         cmd = nds_cmd_loop(CMDLOOP_STANDARD);
@@ -548,7 +435,6 @@ int nds_get_input(int *x, int *y, int *mod)
       key = cmd.f_char;
     } else if (nds_chord_key_pressed(state.released)) {
       if (! chord_key_was_held) {
-        key = nds_map_key(state.released);
       } else {
         chord_key_was_held = 0;
       }
@@ -615,8 +501,6 @@ int nds_get_input(int *x, int *y, int *mod)
 
       return 0;
     }
-
-    swiWaitForVBlank();
     
     if (state.drag_stopped) {
       map_center = coord_add(map_center, state.drag_distance);
@@ -942,6 +826,12 @@ nds_cmd_t nds_cmd_loop(nds_cmdloop_op_type_t optype)
 
   picked_cmd.f_char = 0;
   picked_cmd.name = NULL;
+
+  /* Wait until any pressed keys are released before we start. */
+
+  if (! iflags.holdmode) {
+    nds_flush(0);
+  }
 
   /*
    * Now, we loop until either a command is tapped and selected, or the left

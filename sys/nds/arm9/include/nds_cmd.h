@@ -24,6 +24,11 @@
 
 #define NUMDIRS        9
 
+/* 
+ * These are custom combined keys that we generate during input
+ * scanning
+ */
+
 /* The number of buffered command characters we'll support. */
 
 #define MAXCMDS 10
@@ -59,6 +64,7 @@ char nds_input_buffer_shift();
 char *nds_input_buffer_shiftall();
 
 char *nds_get_direction_keys();
+char *nds_get_direction_key_string(int dir);
 nds_cmd_t *nds_get_cmdlist();
 
 int nds_get_input(int *x, int *y, int *mod);

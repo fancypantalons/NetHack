@@ -6,9 +6,10 @@
 #include "nds_config.h"
 #include "nds_util.h"
 #include "nds_cmd.h"
+#include "nds_input.h"
 
 typedef struct {
-  u16 key;
+  int key;
   char command[INPUT_BUFFER_SIZE];
 } nds_keymap_entry_t;
 
@@ -16,13 +17,13 @@ nds_keymap_entry_t *keymap = NULL;
 
 int numkeys = 0;
 
-u16 chord_keys;
-u16 cmd_key;
+int chord_keys;
+int cmd_key;
 
 /*
  * Convert pressed keys into a user-presentable string.
  */
-char *string_for_key(u16 key)
+char *string_for_key(int key)
 {
   switch (key) {
     case KEY_A:
@@ -55,6 +56,18 @@ char *string_for_key(u16 key)
     case KEY_RIGHT:
       return "Right";
 
+    case KEY_UP_LEFT:
+      return "Up Left";
+
+    case KEY_UP_RIGHT:
+      return "Up Right";
+
+    case KEY_DOWN_LEFT:
+      return "Down Left";
+
+    case KEY_DOWN_RIGHT:
+      return "Down Right";
+
     case KEY_START:
       return "Start";
 
@@ -65,7 +78,7 @@ char *string_for_key(u16 key)
   return "(none)";
 }
 
-u16 nds_string_to_key(char *str)
+int nds_string_to_key(char *str)
 {
   if (strcasecmp(str, "a") == 0) {
     return KEY_A;
@@ -87,6 +100,14 @@ u16 nds_string_to_key(char *str)
     return KEY_LEFT;
   } else if (strcasecmp(str, "right") == 0) {
     return KEY_RIGHT;
+  } else if (strcasecmp(str, "upleft") == 0) {
+    return KEY_UP_LEFT;
+  } else if (strcasecmp(str, "upright") == 0) {
+    return KEY_UP_RIGHT;
+  } else if (strcasecmp(str, "downleft") == 0) {
+    return KEY_DOWN_LEFT;
+  } else if (strcasecmp(str, "downright") == 0) {
+    return KEY_DOWN_RIGHT;
   } else if (strcasecmp(str, "start") == 0) {
     return KEY_START;
   } else if (strcasecmp(str, "select") == 0) {
@@ -196,9 +217,9 @@ char *nds_command_to_string(char *command)
 /*
  * Translate the chordkey string into a keymask.
  */
-u16 *nds_parse_key_string(char *keystr)
+int *nds_parse_key_string(char *keystr)
 {
-  static u16 keyarr[13];
+  static int keyarr[13];
 
   char *end;
   int i = 0;
@@ -218,10 +239,10 @@ u16 *nds_parse_key_string(char *keystr)
   return keyarr;
 }
 
-u16 nds_key_string_to_mask(char *keystr)
+int nds_key_string_to_mask(char *keystr)
 {
-  u16 *keyarr = nds_parse_key_string(keystr);
-  u16 keys = 0;
+  int *keyarr = nds_parse_key_string(keystr);
+  int keys = 0;
   int i;
 
   for (i = 0; keyarr[i]; i++) {
@@ -234,7 +255,7 @@ u16 nds_key_string_to_mask(char *keystr)
 /*
  * Add an entry to the keymap.
  */
-void nds_add_keymap_entry(u16 key, char command[INPUT_BUFFER_SIZE])
+void nds_add_keymap_entry(int key, char command[INPUT_BUFFER_SIZE])
 {
   int i;
   int entry_index = -1;
@@ -259,11 +280,11 @@ void nds_add_keymap_entry(u16 key, char command[INPUT_BUFFER_SIZE])
  * This finds all the keys which have the chord keys currently pressed as
  * part of their definition, and returns a string representation.
  */
-char *nds_find_key_options(u16 *helpline, u16 key)
+char *nds_find_key_options(int *helpline, int key)
 {
   static char buffer[BUFSZ];
   int i, j;
-  u16 chords_pressed = (key & chord_keys);
+  int chords_pressed = (key & chord_keys);
 
   buffer[0] = '\0';
 
@@ -273,7 +294,7 @@ char *nds_find_key_options(u16 *helpline, u16 key)
 
   for (i = 0; helpline[i]; i++) {
     for (j = 0; j < numkeys; j++) {
-      u16 non_chord_keys = (keymap[j].key & ~chords_pressed);
+      int non_chord_keys = (keymap[j].key & ~chords_pressed);
 
       if (*(keymap[j].command) == 0) {
         continue;
@@ -348,7 +369,7 @@ int nds_chord_key_pressed(int pressed)
          (! (pressed & ~chord_keys));
 }
 
-int nds_map_key(u16 pressed)
+int nds_map_key(int pressed)
 {
   char commands[MAXCMDS][INPUT_BUFFER_SIZE];
   int numcmds = nds_get_key_cmds(pressed, commands);
@@ -372,10 +393,9 @@ int nds_map_key(u16 pressed)
 
 #define OLD_NUMKEYS 20
 
-int nds_load_key_config()
+int _nds_load_legacy_key_config(FILE *fp)
 {
-  /* We need this for backward compatibility */
-  u16 oldkeys[OLD_NUMKEYS] = {
+  int oldkeys[OLD_NUMKEYS] = {
     KEY_A,
     KEY_B,
     KEY_X,
@@ -398,12 +418,107 @@ int nds_load_key_config()
     KEY_DOWN | KEY_R,
   };
 
-  FILE *fp = fopen(fqname(KEY_CONFIG_FILE, CONFIGPREFIX, 0), "r");
+  int ret;
+  int i;
+  char buffer[INPUT_BUFFER_SIZE];
+
+  chord_keys = KEY_R;
+
+  fp = fopen(fqname(KEY_CONFIG_FILE, CONFIGPREFIX, 0), "r");
+
+  for (i = 0; i < OLD_NUMKEYS; i++) {
+    if ((ret = fread(buffer, 1, sizeof(buffer), fp)) < sizeof(buffer)) {
+      DEBUG_PRINT("Unable to read keymap (%d != %d).\n", ret, sizeof(buffer));
+      return -1;
+    }
+
+    if (*buffer) {
+      nds_add_keymap_entry(oldkeys[i], buffer);
+    }
+  }
+}
+
+int _nds_load_v1_key_config(FILE *fp)
+{
+  u16 saved_chord_keys;
+  int mapcnt;
+  u16 key;
+
+  int ret;
+  int i;
+  char buffer[INPUT_BUFFER_SIZE];
+
+  if ((ret = fread(&saved_chord_keys, 1, sizeof(saved_chord_keys), fp)) < sizeof(saved_chord_keys)) {
+    DEBUG_PRINT("Unable to read chord keys.\n");
+    return -1; 
+  } else {
+    chord_keys = saved_chord_keys;
+  }
+
+  if ((ret = fread(&mapcnt, 1, sizeof(mapcnt), fp)) < sizeof(mapcnt)) {
+    DEBUG_PRINT("Unable to read key count.\n");
+    return -1;
+  }
+
+  for (i = 0; i < mapcnt; i++) {
+    if ((ret = fread(&key, 1, sizeof(key), fp)) < sizeof(key)) {
+      DEBUG_PRINT("Unable to read keymap key (%d != %d, %d of %d).\n", ret, sizeof(key), i, numkeys);
+      return -1;
+    }
+
+    if ((ret = fread(buffer, 1, sizeof(buffer), fp)) < sizeof(buffer)) {
+      DEBUG_PRINT("Unable to read keymap command.\n");
+      return -1;
+    }
+
+    nds_add_keymap_entry(key, buffer);
+  }
+}
+
+int _nds_load_v2_key_config(FILE *fp)
+{
+  int saved_chord_keys;
+  int mapcnt;
+  int key;
+
+  int ret;
+  int i;
+  char buffer[INPUT_BUFFER_SIZE];
+
+  if ((ret = fread(&saved_chord_keys, 1, sizeof(saved_chord_keys), fp)) < sizeof(saved_chord_keys)) {
+    DEBUG_PRINT("Unable to read chord keys.\n");
+    return -1; 
+  } else {
+    chord_keys = saved_chord_keys;
+  }
+
+  if ((ret = fread(&mapcnt, 1, sizeof(mapcnt), fp)) < sizeof(mapcnt)) {
+    DEBUG_PRINT("Unable to read key count.\n");
+    return -1;
+  }
+
+  for (i = 0; i < mapcnt; i++) {
+    if ((ret = fread(&key, 1, sizeof(key), fp)) < sizeof(key)) {
+      DEBUG_PRINT("Unable to read keymap key (%d != %d, %d of %d).\n", ret, sizeof(key), i, numkeys);
+      return -1;
+    }
+
+    if ((ret = fread(buffer, 1, sizeof(buffer), fp)) < sizeof(buffer)) {
+      DEBUG_PRINT("Unable to read keymap command.\n");
+      return -1;
+    }
+
+    nds_add_keymap_entry(key, buffer);
+  }
+}
+
+int nds_load_key_config()
+{
+  const char *fname = fqname(KEY_CONFIG_FILE, CONFIGPREFIX, 0);
+
+  FILE *fp = fopen(fname, "r");
   int ret;
   int magic;
-  char buffer[INPUT_BUFFER_SIZE];
-  int i;
-  int mapcnt;
 
   if (fp == (FILE *)0) {
     return -1;
@@ -414,49 +529,14 @@ int nds_load_key_config()
     return -1;
   }
 
-  if (magic != KEY_MAGIC) {
-    chord_keys = KEY_R;
-
-    fclose(fp);
-    fp = fopen(fqname(KEY_CONFIG_FILE, CONFIGPREFIX, 0), "r");
-
-    for (i = 0; i < OLD_NUMKEYS; i++) {
-      if ((ret = fread(buffer, 1, sizeof(buffer), fp)) < sizeof(buffer)) {
-        DEBUG_PRINT("Unable to read keymap (%d != %d).\n", ret, sizeof(buffer));
-        return -1;
-      }
-
-      if (*buffer) {
-        nds_add_keymap_entry(oldkeys[i], buffer);
-      }
-    }
+  if (magic == KEY_MAGIC_V1) {
+    _nds_load_v1_key_config(fp);
+  } else if (magic == KEY_MAGIC_V2) {
+    _nds_load_v2_key_config(fp);
   } else {
-    int i;
-    u16 key;
+    fseek(fp, 0, SEEK_SET);
 
-    if ((ret = fread(&chord_keys, 1, sizeof(chord_keys), fp)) < sizeof(chord_keys)) {
-      DEBUG_PRINT("Unable to read chord keys.\n");
-      return -1; 
-    }
-
-    if ((ret = fread(&mapcnt, 1, sizeof(mapcnt), fp)) < sizeof(mapcnt)) {
-      DEBUG_PRINT("Unable to read key count.\n");
-      return -1;
-    }
-
-    for (i = 0; i < mapcnt; i++) {
-      if ((ret = fread(&key, 1, sizeof(key), fp)) < sizeof(key)) {
-        DEBUG_PRINT("Unable to read keymap key (%d != %d, %d of %d).\n", ret, sizeof(key), i, numkeys);
-        return -1;
-      }
-
-      if ((ret = fread(buffer, 1, sizeof(buffer), fp)) < sizeof(buffer)) {
-        DEBUG_PRINT("Unable to read keymap command.\n");
-        return -1;
-      }
-
-      nds_add_keymap_entry(key, buffer);
-    }
+    _nds_load_legacy_key_config(fp);
   }
 
   fclose(fp);
@@ -468,7 +548,7 @@ void nds_save_key_config()
 {
   FILE *fp = fopen(fqname(KEY_CONFIG_FILE, CONFIGPREFIX, 0), "w");
   int i;
-  int magic = KEY_MAGIC;
+  int magic = KEY_MAGIC_V2;
 
   if (fp == (FILE *)0) {
     return;
@@ -479,7 +559,7 @@ void nds_save_key_config()
   fwrite(&numkeys, 1, sizeof(numkeys), fp);
 
   for (i = 0; i < numkeys; i++) {
-    u16 key = keymap[i].key;
+    int key = keymap[i].key;
 
     fwrite(&key, 1, sizeof(key), fp);
     fwrite(keymap[i].command, 1, INPUT_BUFFER_SIZE, fp);
@@ -659,7 +739,7 @@ const char *nds_get_bool_option()
   return res;
 }
 
-nds_cmd_t nds_get_config_cmd(u16 key)
+nds_cmd_t nds_get_config_cmd(int key)
 {
   winid win;
   menu_item *sel;
@@ -744,32 +824,23 @@ void nds_config_key()
   nds_cmd_t cmd;
   char buf[BUFSZ];
 
-  u16 key;
+  int key = 0;
   char command[INPUT_BUFFER_SIZE];
+
+  nds_input_state_t prev_state, state;
+
+  memset(&state, 0, sizeof(state));
 
   nds_flush(0);
 
   nds_draw_prompt("Press the key to modify.");
 
-  while (1) {
-    swiWaitForVBlank();
+  while (! key) {
+    prev_state = state;
+    state = nds_poll_input(prev_state);
 
-    scanKeys();
-
-    prev_held = held;
-    held = nds_keysHeld();
-
-    /* We don't let the user configure these */
-
-    if ((prev_held & chord_keys) && (held == 0) && (nds_count_bits(prev_held) == 1)) {
-      key = prev_held;
-      break;
-    } else if ((held & cmd_key) ||
-               ((held & ~chord_keys) == 0)) {
-      continue;
-    } else if (held) {
-      key = held;
-      break;
+    if (! (state.pressed & cmd_key)) {
+      key = state.pressed;
     }
   }
 
@@ -830,9 +901,8 @@ void nds_show_keys()
 
 int nds_key_config_init()
 {
-  u16 chord_keys_config;
-  u16 cmd_key_config;
-  char *direction_keys = nds_get_direction_keys();
+  int chord_keys_config;
+  int cmd_key_config;
 
   if (nds_load_key_config() < 0) {
     char tmp[INPUT_BUFFER_SIZE];
@@ -848,17 +918,14 @@ int nds_key_config_init()
     nds_add_keymap_entry(KEY_X, "o");
     nds_add_keymap_entry(KEY_Y, "\x4");
 
-    tmp[0] = direction_keys[DIR_UP];
-    nds_add_keymap_entry(KEY_UP, tmp);
-
-    tmp[0] = direction_keys[DIR_DOWN];
-    nds_add_keymap_entry(KEY_DOWN, tmp);
-
-    tmp[0] = direction_keys[DIR_LEFT];
-    nds_add_keymap_entry(KEY_LEFT, tmp);
-
-    tmp[0] = direction_keys[DIR_RIGHT];
-    nds_add_keymap_entry(KEY_RIGHT, tmp);
+    nds_add_keymap_entry(KEY_UP, nds_get_direction_key_string(DIR_UP));
+    nds_add_keymap_entry(KEY_UP_RIGHT, nds_get_direction_key_string(DIR_UP_RIGHT));
+    nds_add_keymap_entry(KEY_RIGHT, nds_get_direction_key_string(DIR_RIGHT));
+    nds_add_keymap_entry(KEY_DOWN_RIGHT, nds_get_direction_key_string(DIR_DOWN_RIGHT));
+    nds_add_keymap_entry(KEY_DOWN, nds_get_direction_key_string(DIR_DOWN));
+    nds_add_keymap_entry(KEY_DOWN_LEFT, nds_get_direction_key_string(DIR_DOWN_LEFT));
+    nds_add_keymap_entry(KEY_LEFT, nds_get_direction_key_string(DIR_LEFT));
+    nds_add_keymap_entry(KEY_UP_LEFT, nds_get_direction_key_string(DIR_UP_LEFT));
 
     nds_add_keymap_entry(KEY_RIGHT | KEY_R, "\xFE");
     nds_add_keymap_entry(KEY_LEFT | KEY_R, "\xFD");
