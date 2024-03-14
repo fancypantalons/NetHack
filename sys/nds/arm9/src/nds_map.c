@@ -390,14 +390,6 @@ void nds_draw_tile(coord_t coords)
     unsigned int special;
 
     mapglyph(glyph, &ch, &color, &special, coords.x, coords.y, 0);
-
-    /*
-    if (special & MG_PET) {
-      oam_shadow.oamBuffer[++pet_count].x = x * tile_width_px;
-      oam_shadow.oamBuffer[pet_count].y = y * tile_height_px;
-      oam_shadow.oamBuffer[pet_count].isHidden = 0;
-    }
-    */
   }
 }
 
@@ -511,13 +503,15 @@ void nds_draw_sprites()
   for (i = 0; i < map->sprite_count; i++) {
     sprite_t *sprite = &(map->sprites[i]);
 
+    coord_t screen_tile_coords = coord_subtract(sprite->coords, map->viewport.start);
+
     oamSet(
       &oamMain,                // Video subsystem to use
       sprite->index,           // The index of the allocate sprite
-      sprite->coords.x,        // Our coordinates
-      sprite->coords.y,            
+      screen_tile_coords.x * tile_width_in_px,        // Our coordinates
+      screen_tile_coords.y * tile_height_in_px,
       2,                       // Sprite priority
-      0,                       // Alpha value for sprite
+      1,                       // Alpha value for sprite
       SpriteSize_64x64,        // Obviously the size
       SpriteColorFormat_Bmp,   // and format
       sprite->gfx,             // Pointer to our graphics memory
@@ -534,14 +528,12 @@ void nds_draw_sprites()
 
 void nds_set_graphics_cursor(coord_t coords)
 {
-  if (! POINT_IN_RECT(coords, map->viewport) ||
-      ! iflags.cursor) {
-
-    return;
-  } 
-
-  map->sprites[0].coords = coords;
-  map->sprites[0].hidden = false;
+  if (POINT_IN_RECT(coords, map->viewport)) {
+    map->sprites[0].coords = coords;
+    map->sprites[0].hidden = false;
+  } else {
+    map->sprites[0].hidden = true;
+  }
 }
 
 void nds_highlight_tile(coord_t coords)
@@ -583,9 +575,7 @@ void nds_render_cursor(int sprite_num, int r, int g, int b)
         continue;
       }
 
-      u16 *tptr = map->sprites[sprite_num].gfx + y * 64 + x;
-
-      *tptr = ARGB16(1, r, g, b);
+      map->sprites[sprite_num].gfx[(y * 256) + x] = ARGB16(1, r, g, b);
     }
   }
 }
@@ -599,9 +589,7 @@ void nds_render_highlighter(int sprite_num, int r, int g, int b)
 
   for (y = 0; y < tile_height_in_px; y++) {
     for (x = 0; x < tile_width_in_px; x++) {
-      u16 *tptr = map->sprites[sprite_num].gfx + y * 64 + x;
-
-      *tptr = ARGB16(1, r, g, b);
+      map->sprites[sprite_num].gfx[(y * 256) + x] = ARGB16(1, r, g, b);
     }
   }
 }
@@ -615,8 +603,7 @@ void nds_init_sprite(int bpp)
   /* Let's draw our highlight thinger */
 
   nds_render_cursor(0, 63, 63, 63);
-  //nds_render_cursor(1, 31, 0, 0);
-  nds_render_highlighter(1, 0, 0, 63);
+  //nds_render_highlighter(1, 0, 0, 63);
 }
 
 /*
