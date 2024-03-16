@@ -15,6 +15,9 @@
 #include "nds_map.h"
 #include "nds_gfx.h"
 
+#include "nds_graphics_tilemap.h"
+#include "nds_text_tilemap.h"
+
 #define FONT_FILE_NAME          "map.bdf"
 #define FONT_PALETTE_NAME       "map.pal"
 
@@ -31,34 +34,14 @@
 
 #define MINIMAP_X               4
 
-#define NDS_LOAD_TILE(tile_idx, coords) ((TILE_FILE == NULL) ? nds_load_text_tile(tile_idx, coords) : nds_load_graphics_tile(tile_idx, coords))
-#define NDS_INIT_MAP(pal, pallen) ((TILE_FILE == NULL) ? nds_init_text_map(pal, pallen) : nds_init_tiled_map(pal, pallen))
-
-#define ROUND_UP(val) ( (((val) & 0x07) == 0) ? (val) : (((val / 8) + 1) * 8) )
-
 #define c2(a,i)		(RGB15((a[i+2]>>3),(a[i+1]>>3),(a[i]>>3)))
 
-#define CACHE_SLOT_TO_TILE_INDEX(c) ((c + 1) * tile_width_in_tiles * tile_height_in_tiles)
+#define CACHE_SLOT_TO_TILE_INDEX(c) ((c + 1) * tilemap->tile_width_in_tiles * tilemap->tile_height_in_tiles)
 
 /* The map */
 
 nds_map_t *map;
-
-/* Tile-based graphics specific variables */
-
-bmp_t tiles;
-
-int width_in_tiles;
-int height_in_tiles;
-int tile_width_in_tiles, tile_height_in_tiles;
-int tile_width_in_px, tile_height_in_px;
-
-/* Text-based graphics variables */
-
-struct font *map_font;
-struct ppm *text_img;
-int font_char_w;
-int font_char_h;
+nds_tilemap_t *tilemap;
 
 /* General rendering variables */
 
@@ -79,7 +62,7 @@ void nds_init_tile_cache()
 {
   int i;
 
-  map->num_cache_entries = (MAX_TILE_SLOTS - 1) / (tile_width_in_tiles * tile_height_in_tiles);
+  map->num_cache_entries = (MAX_TILE_SLOTS - 1) / (tilemap->tile_width_in_tiles * tilemap->tile_height_in_tiles);
 
   map->tile_cache = (tile_cache_entry_t *)malloc(sizeof(tile_cache_entry_t) * map->num_cache_entries);
 
@@ -162,138 +145,14 @@ int nds_allocate_cache_slot(coord_t coords)
   return cache_slot;
 }
 
-/*
- * Copy a tile from our tile image, loaded previously, into tile RAM.  In the
- * case of tiles with a width or height larger than 8 pixels, this will result
- * in multiple tile positions being occupied in video RAM.
- */
-void nds_load_graphics_tile(int tile_idx, coord_t coords) 
+void nds_write_tile_row(int subtile_idx, int y, u16 *row)
 {
-  int glyph = map->glyphs[coords.y][coords.x];
-  int i, j, x;
-  int width, height, bpp, row_bytes;
-  int bmp_tile_x, bmp_tile_y;
-  u8 *bmp_row_start;
-  u16 *tile_row_start;
+  int bpp = tilemap->bpp;
+  u16 *tile_row_start = tile_ram + subtile_idx * bpp * 8 / 2 + y * bpp / 2; 
 
-  /* Next, get a few fields from the BMP headers that we'll need. */
+  /* Again, this works because 8 * (bpp / 8) == bpp */
 
-  width = bmp_width(&tiles);
-  height = bmp_height(&tiles);
-  bpp = bmp_bpp(&tiles);
-
-  /*
-   * Compute the number of bytes in each row of 8-pixel tiles.
-   *
-   * This works explicitely because each tile component is 8 pixels wide.
-   * Thus, the number of bytes in a row is (8 * (bpp / 8)), which just
-   * ends up being bpp.
-   */
-
-  row_bytes = tile_width_in_tiles * bpp;
-
-  /* Now calculate the pointer which points to the start of the BMP row */
-
-  bmp_tile_y = glyph2tile[glyph] / width_in_tiles;
-  bmp_tile_x = width_in_tiles - glyph2tile[glyph] % width_in_tiles;
-
-  bmp_row_start = tiles.bitmap + tiles.bitmap_length - 
-                  bmp_tile_y * TILE_HEIGHT * width_in_tiles * row_bytes - 
-                  bmp_tile_x * row_bytes ;
-
-  for (j = 0; j < tile_height_in_tiles; j++) {
-    int y;
-
-    for (y = 0; y < 8; y++) {
-      for (i = 0; i < tile_width_in_tiles; i++) {
-        tile_row_start = tile_ram + (tile_idx + j * tile_width_in_tiles + i) * bpp * 8 / 2 + y * bpp / 2; 
-
-        /* Again, this works because 8 * (bpp / 8) == bpp */
-
-        for (x = 0; x < bpp; x += 2, bmp_row_start += 2) {
-          if (bpp == 4) {
-            u16 a, b, c, d;
-
-            a = (bmp_row_start[0] & 0xF0) >> 4;
-            b = (bmp_row_start[0] & 0x0F);
-            c = (bmp_row_start[1] & 0xF0) >> 4;
-            d = (bmp_row_start[1] & 0x0F);
-
-            tile_row_start[x / 2] = (d << 12) | (c << 8) | (b << 4) | (a << 0);
-          } else {
-            tile_row_start[x / 2] = (bmp_row_start[1] << 8) |
-                                     bmp_row_start[0];
-          }
-        }
-      }
-
-      bmp_row_start -= row_bytes * width_in_tiles + row_bytes;
-    }
-  }
-}
-
-/*
- * Render the glyph into a tile.
- */
-void nds_load_text_tile(int tile_idx, coord_t coords) 
-{
-  int glyph = map->glyphs[coords.y][coords.x];
-  int ch, color;
-  unsigned int special;
-  char tmp[BUFSZ];
-  int tile_x, y, i;
-  u16 *tile_ptr;
-  unsigned char *img_data;
-  int black = MAP_COLOUR(CLR_BLACK);
-
-  /* Alright, now convert the glyph to a character */
-
-  mapglyph(glyph, &ch, &color, &special, coords.x, coords.y, 0);
-
-  /* Mmm... hacky... */
-
-  if (color == CLR_BLACK) {
-    color = CLR_BLUE;
-  }
-
-  if (((special & MG_PET) && iflags.hilite_pet) ||
-      ((special & MG_DETECT) && iflags.use_inverse)) {
-    sprintf(tmp, "\e[7m%c", ch);
-  } else {
-    sprintf(tmp, "%c", ch);
-  }
-
-  /* Now draw the character to a PPM image... yes, this is inefficient :) */
-
-  clear_ppm(text_img, black);
-
-  draw_string(map_font, tmp, text_img, 
-              text_img->width / 2 - font_char_w / 2, 
-              text_img->height / 2 - font_char_h / 2, 
-              -1, -1);
-
-  img_data = (unsigned char *)text_img->bitmap;
-  tile_ptr = tile_ram + tile_idx * 64 / 2;
-
-  /* Now copy the contents of the PPM to tile RAM */
-
-  for (y = 0; y < text_img->height; y++) {
-    for (tile_x = 0; tile_x < tile_width_in_tiles; tile_x++) {
-      int tile_y = y & 0xF0;
-      int tile_row = y & 0x0F;
-      u16 *row_ptr = tile_ptr + 
-                     ((tile_y * tile_width_in_tiles + tile_x) * 64 +
-                      tile_row * 8) / 2;
-
-      for (i = 0; i < 4; i++, img_data += 2) {
-        u8 c0 = ((img_data[0] != black) ? color : 0) + 1;
-        u8 c1 = ((img_data[1] != black) ? color : 0) + 1;
-
-        row_ptr[i] = (c1 << 8) |
-                     c0;
-      }
-    }
-  }
+  memcpy(tile_row_start, row, tilemap->tile_width_in_tiles * tilemap->tile_height_in_tiles * bpp);
 }
 
 int nds_load_tile(coord_t coords)
@@ -305,7 +164,7 @@ int nds_load_tile(coord_t coords)
     cache_slot = nds_allocate_cache_slot(coords);
     tile_idx = CACHE_SLOT_TO_TILE_INDEX(cache_slot);
 
-    NDS_LOAD_TILE(tile_idx, coords);
+    nds_tilemap_load_tile(tilemap, tile_idx, map->glyphs[coords.y][coords.x], coords);
   } else {
     tile_idx = CACHE_SLOT_TO_TILE_INDEX(cache_slot);
   }
@@ -369,10 +228,10 @@ void nds_draw_tile(coord_t coords)
 
   coord_t screen_tile_coords = coord_subtract(coords, map->viewport.start);
 
-  midx = screen_tile_coords.y * tile_height_in_tiles * 32 + screen_tile_coords.x * tile_width_in_tiles;
+  midx = screen_tile_coords.y * tilemap->tile_height_in_tiles * 32 + screen_tile_coords.x * tilemap->tile_width_in_tiles;
 
-  for (j = 0; j < tile_height_in_tiles; j++, midx += 32) {
-    for (i = 0; i < tile_width_in_tiles; i++) {
+  for (j = 0; j < tilemap->tile_height_in_tiles; j++, midx += 32) {
+    for (i = 0; i < tilemap->tile_width_in_tiles; i++) {
       map_ram[midx + i] = tidx | (palette << 12); 
 
       if (tidx > 0) {
@@ -391,97 +250,6 @@ void nds_draw_tile(coord_t coords)
 
     mapglyph(glyph, &ch, &color, &special, coords.x, coords.y, 0);
   }
-}
-
-/*
- * Initialize the graphical tile map.
- */
-int nds_init_tiled_map(u16 *palette, int *pallen)
-{
-  char *fname = TILE_FILE;
-  int i;
-
-  tile_width_in_px = TILE_WIDTH;
-  tile_width_in_tiles = TILE_WIDTH / 8;
-
-  tile_height_in_px = TILE_HEIGHT;
-  tile_height_in_tiles = TILE_HEIGHT / 8;
-
-  /* Now load the tiles into memory */
-
-  if (bmp_read(fname, &tiles) < 0) {
-    return -1;
-  }
-
-  /* Compute the width and height of our image, in tiles */
-
-  width_in_tiles = bmp_width(&tiles) / tile_width_in_px;
-  height_in_tiles = bmp_height(&tiles) / tile_height_in_px;
-
-  /* Alright, file loaded, let's copy over the palette */
-
-  *pallen = tiles.palette_length;
-
-  for (i = 0; i < tiles.palette_length; i++) {
-    u16 val = RGB15((tiles.palette[i].r >> 3),
-                    (tiles.palette[i].g >> 3),
-                    (tiles.palette[i].b >> 3));
-
-    palette[i] = val;
-  }
-
-  return bmp_bpp(&tiles);
-}
-
-/*
- * Initialize the textual map.
- */
-int nds_init_text_map(u16 *palette, int *pallen)
-{
-  int img_w, img_h;
-  int i;
-  int palcnt;
-
-  if ((map_font = read_bdf(FONT_FILE_NAME)) == NULL) {
-    DEBUG_PRINT("Unable to open '%s'\n", FONT_FILE_NAME);
-
-    return -1;
-  }
-
-  if ((palcnt = nds_load_palette(FONT_PALETTE_NAME, palette + 1)) < 0) {
-    return -1;
-  }
-
-  /* Generate our inverse palette */
-
-  for (i = 1; i < palcnt + 1; i++) {
-    palette[i + 256] = palette[i] ^ 0x7FFF;
-  }
-
-  *pallen = 512;
-
-  /* Now figure out our dimensions */
-
-  text_dims(map_font, "#", &font_char_w, &font_char_h);
-
-  img_w = ROUND_UP(font_char_w);
-  img_h = ROUND_UP(font_char_h);
-
-  text_img = alloc_ppm(img_w, img_h);
-
-  tile_width_in_px = img_w;
-  tile_width_in_tiles = img_w / 8;
-
-  tile_height_in_px = img_h;
-  tile_height_in_tiles = img_h / 8;
-
-  /* Lastly, create out "blank" tile */
-
-  for (i = 0; i < tile_width_in_tiles * tile_height_in_tiles * 32; i++) {
-    tile_ram[i] = 0x0101;
-  }
-
-  return 8;
 }
 
 /*
@@ -508,8 +276,8 @@ void nds_draw_sprites()
     oamSet(
       &oamMain,                // Video subsystem to use
       sprite->index,           // The index of the allocate sprite
-      screen_tile_coords.x * tile_width_in_px,        // Our coordinates
-      screen_tile_coords.y * tile_height_in_px,
+      screen_tile_coords.x * tilemap->tile_width,        // Our coordinates
+      screen_tile_coords.y * tilemap->tile_height,
       2,                       // Sprite priority
       1,                       // Alpha value for sprite
       SpriteSize_64x64,        // Obviously the size
@@ -558,20 +326,20 @@ void nds_render_cursor(int sprite_num, int r, int g, int b)
 
   int x, y;
 
-  for (y = 0; y < tile_height_in_px; y++) {
-    for (x = 0; x < tile_width_in_px; x++) {
-      if ((x != 0) && (x != (tile_width_in_px - 1)) && 
-          (y != 0) && (y != (tile_height_in_px - 1))) {
+  for (y = 0; y < tilemap->tile_height; y++) {
+    for (x = 0; x < tilemap->tile_width; x++) {
+      if ((x != 0) && (x != (tilemap->tile_width - 1)) && 
+          (y != 0) && (y != (tilemap->tile_height - 1))) {
         continue;
       }
 
-      if ( ((x == 0) || (x == (tile_width_in_px - 1))) &&
-           ((y > 2) && (y < (tile_height_in_px - 3))) ) {
+      if ( ((x == 0) || (x == (tilemap->tile_width - 1))) &&
+           ((y > 2) && (y < (tilemap->tile_height - 3))) ) {
         continue;
       }
 
-      if ( ((y == 0) || (y == (tile_width_in_px - 1))) &&
-           ((x > 2) && (x < (tile_height_in_px - 3))) ) {
+      if ( ((y == 0) || (y == (tilemap->tile_width - 1))) &&
+           ((x > 2) && (x < (tilemap->tile_height - 3))) ) {
         continue;
       }
 
@@ -587,8 +355,8 @@ void nds_render_highlighter(int sprite_num, int r, int g, int b)
 
   int x, y;
 
-  for (y = 0; y < tile_height_in_px; y++) {
-    for (x = 0; x < tile_width_in_px; x++) {
+  for (y = 0; y < tilemap->tile_height; y++) {
+    for (x = 0; x < tilemap->tile_width; x++) {
       map->sprites[sprite_num].gfx[(y * 256) + x] = ARGB16(1, r, g, b);
     }
   }
@@ -615,11 +383,9 @@ void nds_init_sprite(int bpp)
 int nds_init_map()
 {
   u16 *palette;
-  int i, x, y;
+  int i;
 
   int bpp;
-  u16 palette_data[512];
-  int palette_length;
 
   map = (nds_map_t *)malloc(sizeof(nds_map_t));
   memset(map, 0, sizeof(nds_map_t));
@@ -629,7 +395,13 @@ int nds_init_map()
    * mode.
    */
 
-  if ((bpp = NDS_INIT_MAP(palette_data, &palette_length)) < 0) {
+  if (TILE_FILE == NULL) {
+    tilemap = nds_text_tilemap_new(FONT_FILE_NAME, FONT_PALETTE_NAME);
+  } else {
+    tilemap = nds_graphics_tilemap_new(TILE_FILE, TILE_WIDTH, TILE_HEIGHT);
+  }
+
+  if ((bpp = nds_tilemap_init(tilemap, &nds_write_tile_row)) < 0) {
     return -1;
   }
 
@@ -638,8 +410,8 @@ int nds_init_map()
   nds_clear_map();
   nds_init_tile_cache();
 
-  map->viewport.dims.width = 32 / tile_width_in_tiles; 
-  map->viewport.dims.height = 24 / tile_height_in_tiles;
+  map->viewport.dims.width = 32 / tilemap->tile_width_in_tiles; 
+  map->viewport.dims.height = 24 / tilemap->tile_height_in_tiles;
 
   /* Now initialize our graphics layer */
 
@@ -672,15 +444,15 @@ int nds_init_map()
       break;
 
     default:
-      DEBUG_PRINT("Sorry, %d bpp tile files aren't supported.\n", bmp_bpp(&tiles));
+      DEBUG_PRINT("Sorry, %d bpp tile files aren't supported.\n", bpp);
 
       return -1;
   }
 
   /* Alright, time to copy over the palette data. */
 
-  for (i = 0; i < palette_length; i++) {
-    palette[i] = palette_data[i];
+  for (i = 0; i < tilemap->palette_length; i++) {
+    palette[i] = tilemap->palette[i];
   }
 
   /* If we're using extended palettes, get the VRAM set up. */
@@ -734,12 +506,10 @@ void nds_draw_minimap()
   int x, y;
   rectangle_t dims = nds_minimap_dims();
 
-  int rx1, ry1, rx2, ry2;
+  int rx1, ry1;
 
   rx1 = dims.start.x;
   ry1 = dims.start.y;
-  rx2 = RECT_END_X(dims);
-  ry2 = RECT_END_Y(dims);
 
   for (y = 0; y < ROWNO; y++) {
     for (x = 0; x < COLNO; x++) {
@@ -861,12 +631,12 @@ coord_t nds_map_translate_coords(coord_t coords)
 
 int nds_map_tile_width()
 {
-  return tile_width_in_px;
+  return tilemap->tile_width;
 }
 
 int nds_map_tile_height()
 {
-  return tile_height_in_px;
+  return tilemap->tile_height;
 }
 
 coord_t nds_map_get_center()
@@ -909,8 +679,8 @@ void nds_map_set_cursor(coord_t cursor)
 
 coord_t nds_map_relativize(coord_t coords)
 {
-  int u_center_px = (u.ux - map->viewport.start.x) * tile_width_in_px + tile_width_in_px / 2;
-  int u_center_py = (u.uy - map->viewport.start.y) * tile_height_in_px + tile_height_in_px / 2;
+  int u_center_px = (u.ux - map->viewport.start.x) * tilemap->tile_width + tilemap->tile_width / 2;
+  int u_center_py = (u.uy - map->viewport.start.y) * tilemap->tile_height + tilemap->tile_height / 2;
 
   coord_t res = {
     .x = coords.x - u_center_px,
