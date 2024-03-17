@@ -50,11 +50,11 @@ void _nds_tilemap_load_text_tile(nds_tilemap_t *tilemap, int glyph, coord_t coor
 
   for (y = 0; y < tmap->text_img->height; y++) {
     for (tile_x = 0; tile_x < tilemap->tile_width_in_tiles; tile_x++) {
-      int tile_y = y & 0xF0;
-      int tile_row = y & 0x0F;
+      int tile_y = y / 8;
+      int tile_row = y % 8;
 
       u16 *row_ptr = tilemap->tile_buffer + 
-                     ((tile_y * tilemap->tile_width_in_tiles + tile_x) * 8 +
+                     ((tile_y * tilemap->tile_width_in_tiles + tile_x) * 64 +
                       tile_row * 8) / 2;
 
       for (i = 0; i < 4; i++, img_data += 2) {
