@@ -18,7 +18,7 @@ To install, simply extract the ZIP file into the root of your flash cart *preser
 If you want to install manually, do the following:
 
 1. Copy 'NetHackDS.nds' to your flash cart in your preferred location (you can feel free to rename the ROM if you like).
-2. Copy the contents of the NetHack folder to a corresponding folder on your flash cart.  For version 3.6.7 or later, any of the following folder names may be used[^1]:
+2. Copy the contents of the NetHack folder to a corresponding folder on your flash cart.  For version 3.6.7-1 or later, any of the following folder names may be used[^1]:
     1. /data/NetHack-X.Y.Z
     2. /data/NetHack
     3. /NetHack-X.Y.Z
@@ -80,7 +80,7 @@ supports writing back to the supplied directory, so saving and bonesfile
 dropping will not work.
 
 [^1]:
-    For version 3.6.6 and earlier, only the '/NetHack' folder is supported.
+    For version 3.6.7 and earlier, only the '/NetHack' folder is supported.
     
 [^2]:
     NetHack ships with a build tool that assembles the data library that
