@@ -131,8 +131,88 @@ static int bmp_read_palette(FILE *file, bmp_t *bmp)
   return 0;
 }
 
-int bmp_read_bitmap(FILE *file, bmp_t *bmp) {
+int bmp_read_bitmap(bmp_t *bmp) 
+{
   int len;
+  
+  bmp->bitmap = (u8 *)malloc(bmp->bitmap_length);
+
+  if ((len = fread(bmp->bitmap, 1, bmp->bitmap_length, bmp->file)) < bmp->bitmap_length) {
+    DEBUG_PRINT("Short read on BMP, got %d bytes, expected %d\n", 
+            len, bmp->bitmap_length);
+
+    return -1;
+  }
+
+  fclose(bmp->file);
+
+  return 0;
+}
+
+int bmp_read_rows(bmp_t *bmp, int start, int count, u8 **buffer)
+{
+  if (((start + count) >= bmp_height(bmp)) || (start < 0) || (count <= 0)) {
+    return -1;
+  }
+
+  int end = bmp->bitmap_start + bmp->bitmap_length;
+  int row_width = bmp_width(bmp) * (bmp_bpp(bmp) / 8);
+  int block_size = row_width * count;
+  int ret;
+
+  if (*buffer == NULL) {
+    *buffer = (u8 *)malloc(block_size);
+  }
+
+  if ((ret = fseek(bmp->file, end - (start * row_width + block_size), SEEK_SET)) < 0) {
+    return ret;
+  }
+
+  if ((ret = fread(*buffer, block_size, 1, bmp->file)) < 0) {
+    return ret;
+  }
+
+  int y, y2, x;
+  u8 tmp;
+
+  // Invert the image block so it's top-down as god intended
+  for (y = 0, y2 = count - 1; y < y2; y++, y2--) {
+    for (x = 0; x < row_width; x++) {
+      int topidx = y * row_width + x;
+      int bottomidx = y2 * row_width + x;
+
+      tmp = (*buffer)[bottomidx];
+      (*buffer)[bottomidx] = (*buffer)[topidx];
+      (*buffer)[topidx] = tmp;
+    }
+  }
+
+  return ret;
+}
+
+int bmp_open(const char *name, bmp_t *bmp) 
+{
+  bmp->file = fopen(name, "rb");
+
+  int ret;
+
+  if (! bmp->file) {
+    return -1;
+  }
+
+  if ((ret = bmp_read_header(bmp->file, &(bmp->header))) < 0) {
+    goto DONE;
+  }
+
+  if ((ret = bmp_read_dib_header(bmp->file, &(bmp->dib_header))) < 0) {
+    goto DONE;
+  }
+
+  if ((ret = bmp_read_palette(bmp->file, bmp)) < 0) {
+    goto DONE;
+  }
+
+  bmp->bitmap_start = ftell(bmp->file);
 
   switch (bmp->dib_header.length) {
     case BMP_WIN_V3_HEADER_LEN:
@@ -152,48 +232,14 @@ int bmp_read_bitmap(FILE *file, bmp_t *bmp) {
       return -1;
   }
 
-  bmp->bitmap = (u8 *)malloc(bmp->bitmap_length);
-
-  if ((len = fread(bmp->bitmap, 1, bmp->bitmap_length, file)) < bmp->bitmap_length) {
-    DEBUG_PRINT("Short read on BMP, got %d bytes, expected %d\n", 
-            len, bmp->bitmap_length);
-
-    return -1;
-  }
-
-  return 0;
-}
-
-int bmp_read(const char *name, bmp_t *bmp) {
-  FILE *file = fopen(name, "rb");
-  int ret;
-
-  if (! file) {
-    return -1;
-  }
-
-  if ((ret = bmp_read_header(file, &(bmp->header))) < 0) {
-    goto DONE;
-  }
-
-  if ((ret = bmp_read_dib_header(file, &(bmp->dib_header))) < 0) {
-    goto DONE;
-  }
-
-  if ((ret = bmp_read_palette(file, bmp)) < 0) {
-    goto DONE;
-  }
-
-  if ((ret = bmp_read_bitmap(file, bmp)) < 0) {
-    free(bmp->palette);
-    goto DONE;
-  }
-
 DONE:
 
-  fclose(file);
-
   return ret;
+}
+
+void bmp_close(bmp_t *bmp)
+{
+  fclose(bmp->file);
 }
 
 void bmp_free(bmp_t *bmp)

@@ -64,7 +64,7 @@ void nds_init_tile_cache()
 
   map->num_cache_entries = (MAX_TILE_SLOTS - 1) / (tilemap->tile_width_in_tiles * tilemap->tile_height_in_tiles);
 
-  map->tile_cache = (tile_cache_entry_t *)malloc(sizeof(tile_cache_entry_t) * map->num_cache_entries);
+  map->tile_cache = (tile_cache_entry_t *)calloc(map->num_cache_entries, sizeof(tile_cache_entry_t));
 
   for (i = 0; i < map->num_cache_entries; i++) {
     map->tile_cache[i].glyph = -1;
@@ -85,9 +85,20 @@ int nds_find_cache_slot(coord_t coords)
   mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y, 0);
 
   for (i = 0; i < map->num_cache_entries; i++) {
-    if ((map->tile_cache[i].glyph == glyph) && (map->tile_cache[i].colour == colour) && 
-        (map->tile_cache[i].special == special) && (map->tile_cache[i].ch == ch) &&
-        (map->tile_cache[i].tile == tile)) {
+    if (map->tile_cache[i].tile != tile) {
+      continue;
+    }
+
+    // If we're using graphic tiles, if the glyph matches that's enough
+    if (TILE_FILE != NULL) {
+      return i;
+    } 
+
+    // For text tiles these other properties have to match as well
+    if ((map->tile_cache[i].glyph == glyph) &&
+        (map->tile_cache[i].colour == colour) && 
+        (map->tile_cache[i].special == special) && 
+        (map->tile_cache[i].ch == ch)) {
       return i;
     }
   }

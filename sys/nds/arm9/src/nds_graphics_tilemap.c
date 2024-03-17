@@ -1,4 +1,5 @@
 #include "nds_graphics_tilemap.h"
+#include "nds_debug.h"
 
 extern short glyph2tile[];
 
@@ -14,8 +15,14 @@ void _nds_tilemap_load_graphics_tile(nds_tilemap_t *tilemap, int glyph, coord_t 
   u8 *bmp_row_start;
   u16 *tile_row_start;
 
+  int block_row_start = 0;
+
+  static int last_row_start = 0;
+  static u8 *buffer = NULL;
+
   /*
-   * Compute the number of bytes in each row of 8-pixel tiles.
+   * Compute the number of bytes that makes up a row of an individual NetHack
+   * tile.
    */
 
   bpp = tilemap->bpp;
@@ -24,11 +31,24 @@ void _nds_tilemap_load_graphics_tile(nds_tilemap_t *tilemap, int glyph, coord_t 
   /* Now calculate the pointer which points to the start of the BMP row */
 
   bmp_tile_y = tileidx / gmap->width_in_tiles;
-  bmp_tile_x = gmap->width_in_tiles - tileidx % gmap->width_in_tiles;
+  bmp_tile_x = tileidx % gmap->width_in_tiles;
 
-  bmp_row_start = gmap->tiles.bitmap + gmap->tiles.bitmap_length - 
-                  bmp_tile_y * (tilemap->tile_height) * gmap->width_in_tiles * row_bytes - 
-                  bmp_tile_x * row_bytes;
+  block_row_start = bmp_tile_y * tilemap->tile_height;
+
+  /* 
+   * Wee optimization here.  The game tiles tend to be grouped so holding onto
+   * the last row we loaded can improve performance.
+   */
+  if ((buffer == NULL) || (block_row_start != last_row_start)) {
+    bmp_read_rows(&(gmap->tiles), 
+                  block_row_start,
+                  tilemap->tile_height,
+                  &buffer);
+
+    last_row_start = block_row_start;
+  }
+
+  bmp_row_start = buffer + bmp_tile_x * row_bytes;
 
   int i, j, x;
 
@@ -58,7 +78,7 @@ void _nds_tilemap_load_graphics_tile(nds_tilemap_t *tilemap, int glyph, coord_t 
         }
       }
 
-      bmp_row_start -= row_bytes * gmap->width_in_tiles + row_bytes;
+      bmp_row_start += row_bytes * gmap->width_in_tiles - row_bytes;
     }
   }
 }
@@ -69,7 +89,7 @@ int _nds_tilemap_graphics_init(nds_tilemap_t *tilemap)
 
   /* Now load the tiles into memory */
 
-  if (bmp_read(gmap->fname, &(gmap->tiles)) < 0) {
+  if (bmp_open(gmap->fname, &(gmap->tiles)) < 0) {
     return -1;
   }
 

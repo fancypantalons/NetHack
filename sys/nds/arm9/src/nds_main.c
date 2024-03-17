@@ -262,7 +262,8 @@ void splash_screen()
   bmp_t logo;
   int text_w, text_h;
 
-  bmp_read(SPLASH_IMAGE, &logo);
+  bmp_open(SPLASH_IMAGE, &logo);
+  bmp_read_bitmap(&logo);
   nds_draw_bmp(&logo, (u16 *)BG_BMP_RAM_SUB(4), BG_PALETTE_SUB);
 
   bmp_free(&logo);

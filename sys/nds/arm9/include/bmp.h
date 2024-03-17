@@ -56,6 +56,8 @@ typedef struct {
 } bmp_palette_entry_t;
 
 typedef struct {
+  FILE *file;
+
   bmp_header_t header;
   bmp_dib_header_t dib_header;
 
@@ -63,10 +65,13 @@ typedef struct {
   u32 palette_length;
 
   u8 *bitmap;
+  u32 bitmap_start;
   u32 bitmap_length;
 } bmp_t;
 
-int bmp_read(const char *name, bmp_t *bmp);
+int bmp_open(const char *name, bmp_t *bmp);
+void bmp_close(bmp_t *bmp);
+int bmp_read_bitmap(bmp_t *bmp);
 void bmp_free(bmp_t *bmp);
 
 int bmp_bpp(bmp_t *bmp);
