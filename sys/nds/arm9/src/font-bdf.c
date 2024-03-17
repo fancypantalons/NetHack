@@ -307,6 +307,7 @@ read_bdf (const char *file)
                !strncmp (buf, "FIGURE_WIDTH ", 13) ||
                !strncmp (buf, "AVG_LOWERCASE_WIDTH ", 20) ||
                !strncmp (buf, "AVG_UPPERCASE_WIDTH ", 20) ||
+               !strncmp (buf, "MIN_SPACE ", 10) ||
                !strncmp (buf, "FONT_VERSION ", 13))
         {
           /* ignore */
