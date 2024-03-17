@@ -295,6 +295,7 @@ read_bdf (const char *file)
                !strncmp (buf, "UNDERLINE_POSITION ", 19) ||
                !strncmp (buf, "UNDERLINE_THICKNESS ", 20) ||
                !strncmp (buf, "_XMBDFED_INFO ", 14) ||
+               !strncmp (buf, "_GBDFED_INFO ", 13) ||
                !strncmp (buf, "WEIGHT ", 7) ||
                !strncmp (buf, "QUAD_WIDTH ", 11) ||
                !strncmp (buf, "ENDFONT", 7) ||
