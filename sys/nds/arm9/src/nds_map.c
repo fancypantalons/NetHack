@@ -85,17 +85,12 @@ int nds_find_cache_slot(coord_t coords)
   mapglyph(glyph, &ch, &colour, &special, coords.x, coords.y, 0);
 
   for (i = 0; i < map->num_cache_entries; i++) {
-    if (map->tile_cache[i].tile != tile) {
-      continue;
+    if ((TILE_FILE != NULL) && (map->tile_cache[i].tile == tile)) {
+      return i;
     }
 
-    // If we're using graphic tiles, if the glyph matches that's enough
-    if (TILE_FILE != NULL) {
-      return i;
-    } 
-
-    // For text tiles these other properties have to match as well
-    if ((map->tile_cache[i].glyph == glyph) &&
+    if ((TILE_FILE == NULL) && 
+        (map->tile_cache[i].glyph == glyph) &&
         (map->tile_cache[i].colour == colour) && 
         (map->tile_cache[i].special == special) && 
         (map->tile_cache[i].ch == ch)) {
