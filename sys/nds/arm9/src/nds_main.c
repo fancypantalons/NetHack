@@ -16,6 +16,7 @@
 #include <debug_tcp.h>
 
 #include "hack.h"
+#include "patchlevel.h"
 #include "dlb.h"
 #include "nds_debug.h"
 #include "nds_kbd.h"
@@ -266,6 +267,12 @@ void splash_screen()
   bmp_read_bitmap(&logo);
   nds_draw_bmp(&logo, (u16 *)BG_BMP_RAM_SUB(4), BG_PALETTE_SUB);
 
+  text_dims(system_font, VERSION_STRING, &text_w, &text_h);
+  nds_draw_text(system_font, VERSION_STRING,
+                256 - text_w, 
+                192 - text_h,
+                (u16 *)BG_BMP_RAM_SUB(4));
+
   bmp_free(&logo);
 
   nds_fill((u16 *)BG_BMP_RAM(2), 0);
@@ -390,6 +397,9 @@ int switch_to_data_dir()
 {
   DIR *tmp = opendir("/");
   char root[BUFSZ];
+  char dir[BUFSZ];
+
+  sprintf(dir, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
 
   if (! tmp) {
     return 0;
@@ -397,11 +407,11 @@ int switch_to_data_dir()
     closedir(tmp);
   }
 
-  if (try_nethack_dir("data", VERSION_STRING)) {
+  if (try_nethack_dir("data", dir)) {
     return 1;
   }
 
-  if (try_nethack_dir(NULL, VERSION_STRING)) {
+  if (try_nethack_dir(NULL, dir)) {
     return 1;
   }
 
