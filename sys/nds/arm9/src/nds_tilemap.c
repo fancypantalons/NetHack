@@ -6,7 +6,7 @@ int nds_tilemap_init(nds_tilemap_t *map, tilemap_write_row_t writer)
 
   if (ret >= 0) {
     // This is more space than we need for 16 bpp images, but meh, it's a buffer...
-    map->tile_buffer = (u16 *)malloc(map->tile_width * map->tile_width / 2);
+    map->tile_buffer = (u16 *)malloc(map->tile_width * map->tile_width);
     map->writer = writer;
   }
 
