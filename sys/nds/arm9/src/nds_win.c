@@ -1484,6 +1484,10 @@ int _nds_do_menu(nds_nhwindow_t *window)
 
     if ((tmp > 0) && _nds_menu_is_item_selected(menu)) {
       goto DONE;
+    } else if ((tmp > 0) && (menu->how == PICK_ONE) && menu->focused_item >= 0) {
+      _nds_menu_select_item(menu, menu->focused_item, 0);
+
+      goto DONE;
     } else if (tmp < 0) {
       ret = 0;
 

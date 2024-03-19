@@ -65,7 +65,7 @@ void _nds_insert_choice(char *choices, char let)
   }
 }
 
-char *_nds_parse_choices(const char *ques)
+char *_nds_parse_choices(const char *ques, int *allowcnt)
 {
   static char choices[BUFSZ];
 
@@ -89,12 +89,16 @@ char *_nds_parse_choices(const char *ques)
   }
 
   special_choices[0] = '\0';
+  *allowcnt = 0;
 
   for (i = 0; ptr[i] && (ptr[i] != ']'); i++) {
 
     struct obj *otmp;
 
-    if (strncmp(ptr + i, " or ", 4) == 0) {
+    if (strncmp(ptr + i, "<n>", 3) == 0) {
+      i += 3;
+      *allowcnt = 1;
+    } else if (strncmp(ptr + i, " or ", 4) == 0) {
       i += 3;
     } else if (ISWHITESPACE(ptr[i])) {
       continue;
@@ -170,6 +174,7 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
   int ret;
   int yn = 0;
   int ynaq = 0;
+  int allowcnt;
   char *direction_keys = nds_get_direction_keys();
 
   if ((strstr(ques, "In what direction") != NULL) ||
@@ -255,6 +260,8 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
 
     yn = 1;
 
+    allowcnt = 0;
+
     ids[0].a_int = 'y';
     ids[1].a_int = 'n';
 
@@ -273,13 +280,15 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
     ids[0].a_int = 'r';
     ids[1].a_int = 'l';
 
+    allowcnt = 0;
+
     add_menu(win, NO_GLYPH, &(ids[0]), 0, 0, 0, "Right Hand", 0);
     add_menu(win, NO_GLYPH, &(ids[1]), 0, 0, 0, "Left Hand", 0);
   } else {
     int i;
     char curclass = -1;
 
-    choices = _nds_parse_choices(ques);
+    choices = _nds_parse_choices(ques, &allowcnt);
 
     ids = (ANY_P *)malloc(sizeof(ANY_P) * strlen(choices));
     header_id.a_int = 0;
@@ -325,7 +334,7 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
 
   end_menu(win, ques);
 
-  int mode = ((cstr == NULL) || (index(cstr, '#') != NULL)) ? PICK_ONE_TYPE : PICK_ONE;
+  int mode = (allowcnt || (index(cstr, '#') != NULL)) ? PICK_ONE_TYPE : PICK_ONE;
   int cnt = select_menu(win, mode, &sel);
 
   if (cnt <= 0) {

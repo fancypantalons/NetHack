@@ -1676,6 +1676,16 @@ register const char *let, *word;
         } else {
             if (!buf[0])
                 Strcat(qbuf, " [*]");
+#ifdef NDS
+            /* 
+             * On the DS, in our yn_function, in our UX we want to handle
+             * single- and multi-selects differently, but the API doesn't
+             * let us pass through the item calls, so we're gonna be real
+             * dirty and pass it through via the prompt string. Shame!
+             */
+            else if (allowcnt) 
+                Sprintf(eos(qbuf), " [<n>%s or ?*]", buf);
+#endif
             else
                 Sprintf(eos(qbuf), " [%s or ?*]", buf);
             ilet = yn_function(qbuf, (char *) 0, '\0');
