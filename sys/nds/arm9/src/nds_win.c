@@ -1415,6 +1415,17 @@ void _nds_menu_select_item(nds_menu_t *menu, int index, int decrement)
   menu->items[index].highlighted = 1;
 }
 
+int _nds_menu_is_item_selected(nds_menu_t *menu)
+{
+  for (int i = 0; i < menu->count; i++) {
+    if (menu->items[i].selected) {
+      return true;   
+    }    
+  }
+
+  return false;
+}
+
 /*
  * Draws a scrollable window on the screen.  'how' is the standard
  * NetHack how types (PICK_NONE, PICK_ONE, PICK_ANY) and dictates 
@@ -1471,7 +1482,7 @@ int _nds_do_menu(nds_nhwindow_t *window)
 
     held = nds_keysHeld();
 
-    if (tmp > 0) {
+    if ((tmp > 0) && _nds_menu_is_item_selected(menu)) {
       goto DONE;
     } else if (tmp < 0) {
       ret = 0;
