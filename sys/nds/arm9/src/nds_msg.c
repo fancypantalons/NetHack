@@ -17,8 +17,6 @@ struct ppm *msg_img = NULL;
 
 int text_h;
 
-int calls = 0;
-
 void nds_init_msg()
 {
   int i;
@@ -81,10 +79,19 @@ void nds_update_msg(nds_nhwindow_t *win, int blocking)
 
   num_lines = msg_h / system_font->height;
 
-  calls++;
+  int img_h = num_lines * text_h;
+
+  /*
+   * If the size of the message area has changed (e.g. because the status lines
+   * have wrapped), then we need to reallocate a smaller image.
+   */
+  if ((msg_img != NULL) && (img_h != msg_img->height)) {
+    free_ppm(msg_img);
+    msg_img = NULL;
+  }
 
   if (msg_img == NULL) {
-    msg_img = alloc_ppm(256, num_lines * text_h);
+    msg_img = alloc_ppm(256, img_h);
   }
 
   clear_ppm(msg_img, MAP_COLOUR(CLR_BLACK));
