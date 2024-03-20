@@ -3,6 +3,9 @@
 
 #define INPUT_BUFFER_SIZE 32
 
+#define INPUT_OPTIONS_NONE 0x00
+#define INPUT_OPTIONS_CANCELLABLE 0x01
+
 #define CMD_CONFIG     0xFF
 #define CMD_PAN_RIGHT  0xFE
 #define CMD_PAN_LEFT   0xFD
@@ -67,7 +70,7 @@ char *nds_get_direction_keys();
 char *nds_get_direction_key_string(int dir);
 nds_cmd_t *nds_get_cmdlist();
 
-int nds_get_input(int *x, int *y, int *mod);
+int nds_get_input(int *x, int *y, int *mod, int options);
 int nds_get_ext_cmd();
 void nds_number_pad(int value);
 

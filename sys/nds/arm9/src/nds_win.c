@@ -1794,7 +1794,7 @@ int nds_nhgetch()
 
 int nds_nh_poskey(int *x, int *y, int *mod)
 {
-  int ch = nds_get_input(x, y, mod);
+  int ch = nds_get_input(x, y, mod, INPUT_OPTIONS_NONE);
 
   if (*mod == CLICK_2) {
     *mod = CLICK_1;

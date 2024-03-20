@@ -192,7 +192,7 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
 
       nds_draw_prompt("Tap an adjacent square or press a direction key.");
       nds_flush(0);
-      sym = nds_get_input(&x, &y, &mod);
+      sym = nds_get_input(&x, &y, &mod, INPUT_OPTIONS_CANCELLABLE);
       nds_clear_prompt();
 
       if (mod == CLICK_1) {
@@ -219,7 +219,7 @@ char nds_yn_function(const char *ques, const char *cstr, CHAR_P def)
         if ((x == u.ux) && (y == u.uy)) {
           return '>';
         }
-      } else {
+      } else if (strchr(direction_keys, sym) || strchr(quitchars, sym)) {
         return sym;
       }
     }

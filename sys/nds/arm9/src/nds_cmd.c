@@ -392,7 +392,7 @@ void nds_render_key_help_string(int keys)
   draw_ppm(help_img, vram, 4, 192 - system_font->height * 2, 256);
 }
 
-int nds_get_input(int *x, int *y, int *mod)
+int nds_get_input(int *x, int *y, int *mod, int options)
 {
   // Tracks if, on the previous call, we returned a keypress that *wasn't*
   // a single chordkey press-and-release.  This way, if we enter this loop
@@ -486,7 +486,11 @@ int nds_get_input(int *x, int *y, int *mod)
         break;
 
       default:
-        return key;
+        if ((options & INPUT_OPTIONS_CANCELLABLE) && (state.pressed == KEY_B)) {
+          return quitchars[0];
+        } else {
+          return key;
+        }
     }
     
     if (state.tapped) {
