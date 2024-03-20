@@ -15,7 +15,7 @@ OPTIONS=autopickup,pickup_types:$
 OPTIONS=noshowexp,lit_corridor
 OPTIONS=menucolors
 OPTIONS=noautodescribe
-OPTIONS=force_invmenu
+OPTIONS=force_invmenu,herecmd_menu
 
 MENUCOLOR=" blessed "=green
 MENUCOLOR=" holy "=green
