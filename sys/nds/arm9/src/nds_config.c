@@ -931,6 +931,8 @@ int nds_key_config_init()
     nds_add_keymap_entry(KEY_LEFT | KEY_R, "\xFD");
     nds_add_keymap_entry(KEY_UP | KEY_R, "\xFC");
     nds_add_keymap_entry(KEY_DOWN | KEY_R, "\xFB");
+
+    nds_add_keymap_entry(KEY_START, "#herecmdmenu");
   }
 
   /* 
