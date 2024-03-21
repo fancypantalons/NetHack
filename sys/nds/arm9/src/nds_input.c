@@ -108,7 +108,7 @@ nds_input_state_t nds_poll_input(nds_input_state_t prev_state)
   /*
    * Tap events...
    */
-  state.tapped = get_tap_coords(&(state.tap_coords)) && ! state.dragging && ! state.drag_stopped;
+  state.tapped = get_tap_coords(&(state.tap_coords)) && ! prev_state.press_and_hold && ! state.dragging && ! state.drag_stopped;
   state.tap_coords = _to_map_coords(state.tap_coords);
 
   /*

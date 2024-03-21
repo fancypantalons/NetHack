@@ -1794,13 +1794,7 @@ int nds_nhgetch()
 
 int nds_nh_poskey(int *x, int *y, int *mod)
 {
-  int ch = nds_get_input(x, y, mod, INPUT_OPTIONS_NONE);
-
-  if (*mod == CLICK_2) {
-    *mod = CLICK_1;
-  }
-
-  return ch;
+  return nds_get_input(x, y, mod, INPUT_OPTIONS_NONE);
 }
 
 char nds_prompt_char(const char *ques, const char *choices, int toggleable)

@@ -401,13 +401,30 @@ int nds_get_input(int *x, int *y, int *mod, int options)
 
   static int chord_key_was_held = 0;
 
-  nds_input_state_t prev_state;
-  nds_input_state_t state;
+  // Yeah, this is global state, and no I'm not proud of it...
+  //
+  // To explain the need, here, a CLICK2 is registered when a tap-and-hold
+  // occurs.  *But*, we need to remember we were in the middle of the hold
+  // state when we get back into the event loop because if we don't, then
+  // when the stylus is released, it looks like a tap occurred and we end
+  // up returning a CLICK1.
+  //
+  // However, you'll note, we always reinitialize the state *except* in a
+  // tap-and-hold scenario. This ensures ghost clicks and taps don't 
+  // follow us into the event loop here.
+  static int initialized = 0;
+  static nds_input_state_t prev_state;
+  static nds_input_state_t state;
 
   coord_t map_center = { .x = u.ux, .y = u.uy };
   coord_t prev_map_center = map_center;
 
-  memset(&state, 0, sizeof(state));
+  if (! initialized || ! state.press_and_hold) {
+    memset(&state, 0, sizeof(state));
+    memset(&prev_state, 0, sizeof(prev_state));
+
+    initialized = 1;
+  }
 
   *x = *y = *mod = 0;
 
