@@ -784,12 +784,19 @@ void _nds_draw_scroller(nds_nhwindow_t *window, int clear)
     int cur_y = 0;
     int i;
 
-    if (clear) {
-      nds_fill(vram, MAP_COLOUR(CLR_BLACK));
+    int win_w = end_x - start_x;
+    int win_h = system_font->height * TITLE_MAX_LINES;
+
+    if (! window->img || (window->img->width < win_w)) {
+      if (window->img) {
+        free_ppm(window->img);
+      }
+
+      window->img = alloc_ppm(win_w, win_h);
     }
 
-    if (! window->img) {
-      window->img = alloc_ppm(end_x - start_x, system_font->height * TITLE_MAX_LINES);
+    if (clear) {
+      nds_fill(vram, MAP_COLOUR(CLR_BLACK));
     }
 
     for (i = window->topidx; (i < menu->count) && ((cur_y + menu->items[i].region.dims.height) <= (end_y - start_y)); i++) {
@@ -868,10 +875,17 @@ void _nds_draw_scroller(nds_nhwindow_t *window, int clear)
     int cur_y = 0;
     int i;
 
-    if (! window->img) {
-      window->img = alloc_ppm(end_x - start_x, end_y - start_y);
+    int win_w = end_x - start_x;
+    int win_h = end_y - start_y;
+
+    if (! window->img || (window->img->width < win_w) || (window->img->height < win_h)) {
+      if (window->img) {
+        free_ppm(window->img);
+      }
+
+      window->img = alloc_ppm(win_w, win_h);
     }
-    
+
     clear_ppm(window->img, MAP_COLOUR(CLR_BLACK));
 
     for (i = window->topidx; (i < charbuf->count) && (cur_y < (end_y - start_y)); i++) {
