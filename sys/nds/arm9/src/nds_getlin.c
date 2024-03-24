@@ -42,8 +42,8 @@ void nds_getlin(const char *prompt, char *buffer)
   char front[BUFSZ];
   char back[BUFSZ];
 
-  int curspos = 0;
-  int length = 0;
+  int curspos;
+  int length;
 
   int done = 0;
   int text_h;
@@ -59,8 +59,11 @@ void nds_getlin(const char *prompt, char *buffer)
 
   /* Now initialize our buffers */
 
-  front[0] = '\0';
+  strcpy(front, buffer);
   back[0] = '\0';
+
+  length = strlen(buffer);
+  curspos = length;
 
   /* First, display the keyboard and prompting layers */
 

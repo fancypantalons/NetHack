@@ -1952,8 +1952,20 @@ void nds_askname()
 {
   int cnt = 0;
   char **entries = _nds_read_saves(&cnt);
+  int picked = 0;
 
-  plname[0] = '\0';
+  memset(plname, 0, PL_NSIZ);
+
+  for (int i = 0; i < PersonalData->nameLen; i++) {
+    if (PersonalData->name[i] > 255) {
+      // If there's non-ASCII characters we'll just give up.
+      plname[0] = '\0';
+
+      break;
+    } else {
+      plname[i] = PersonalData->name[i];
+    }
+  }
 
   if (cnt != 0) {
     ANY_P *ids = (ANY_P *)malloc(sizeof(ANY_P) * (cnt + 2));
@@ -1980,6 +1992,7 @@ void nds_askname()
     if (select_menu(win, PICK_ONE, &sel) > 0) {
       if (sel->item.a_int != 1) {
         strcpy(plname, (char *)sel->item.a_void);
+        picked = 1;
       }
     }
 
@@ -1998,8 +2011,10 @@ void nds_askname()
     free(ids);
   }
 
-  while (! *plname) {
-    getlin("Enter Your Name:", plname);
+  if (! picked) {
+    do {
+      getlin("Enter your name:", plname);
+    } while (! *plname);
   }
 }
 

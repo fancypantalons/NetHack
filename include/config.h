@@ -551,7 +551,7 @@ typedef unsigned char uchar;
    the map.  The 'edit' capability is just <delete> or <backspace>
    to strip off characters at the end, or <escape> to discard the
    whole thing, then type a new end for the text. */
-/* #define EDIT_GETLIN */
+#define EDIT_GETLIN
 
 /* #define DUMPLOG */  /* End-of-game dump logs */
 #ifdef DUMPLOG
