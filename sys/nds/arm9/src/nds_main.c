@@ -372,9 +372,9 @@ int try_nethack_dir(char *prefix, char *version)
   char root[BUFSZ];
 
   if (prefix != NULL) {
-    sprintf(root, "%s/", prefix);
+    sprintf(root, "/%s/", prefix);
   } else {
-    root[0] = '\0';
+    strcpy(root, "/");
   }
 
   strcat(root, "NetHack");
@@ -384,7 +384,7 @@ int try_nethack_dir(char *prefix, char *version)
     strcat(root, version);
   }
 
-  DEBUG_PRINT("Trying /%s\n", root);
+  DEBUG_PRINT("Trying %s\n", root);
 
   if (chdir(root) == 0) {
     return 1;
